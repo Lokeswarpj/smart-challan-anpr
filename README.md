@@ -57,6 +57,32 @@ npm run dev
 ```
 Open **[http://localhost:5173](http://localhost:5173)** in your browser.
 
+---
+
+### 2. Run the Backend API (FastAPI + AI Engine)
+```bash
+cd backend
+pip install -r requirements.txt
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
+```
+- API Health & Status: **[http://localhost:8000](http://localhost:8000)**
+- Interactive Swagger Docs: **[http://localhost:8000/docs](http://localhost:8000/docs)**
+
+---
+
+### 💡 For Group Project Teammates (Using Antigravity or VS Code)
+If you are collaborating on this project:
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Lokeswarpj/smart-challan-anpr.git
+   ```
+2. Open the cloned folder in **Antigravity**.
+3. You can simply ask the Antigravity assistant:
+   > *"Run the frontend and backend servers and give me the links"*  
+   and Antigravity will launch both servers and provide clickable links!
+
+---
+
 #### Demo Credentials:
 - **Officer Account:** Badge: `KA-POL-1001` | Password: `officer123`
 - **Admin Account:** Badge: `KA-POL-ADMIN` | Password: `admin123`
