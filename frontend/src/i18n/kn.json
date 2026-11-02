@@ -1,0 +1,64 @@
+{
+  "app_name": "ROADGUARD",
+  "tagline": "ಸ್ಮಾರ್ಟ್ ಪರಿಶೀಲನೆ. ತ್ವರಿತ ಜಾರಿ.",
+  "nav": {
+    "dashboard": "ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
+    "verification": "ವಾಹನ ದಾಖಲೆ ಪರಿಶೀಲನೆ",
+    "anpr_scanner": "ANPR ಸ್ಕ್ಯಾನರ್",
+    "challans": "ಚಲನ್ ನಿರ್ವಹಣೆ",
+    "new_challan": "ಹೊಸ ಚಲನ್ ನೀಡಿ",
+    "history": "ಉಲ್ಲಂಘನೆ ಇತಿಹಾಸ",
+    "reports": "ವರದಿಗಳು & ವಿಶ್ಲೇಷಣೆ",
+    "admin": "ನಿರ್ವಾಹಕ ಪ್ಯಾನೆಲ್",
+    "settings": "ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
+    "logout": "ಲಾಗ್‌ಔಟ್",
+    "login": "ಅಧಿಕಾರಿ ಲಾಗಿನ್",
+    "access_dashboard": "ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ಪ್ರವೇಶಿಸಿ"
+  },
+  "status": {
+    "valid": "ಮಾನ್ಯವಾಗಿದೆ",
+    "expired": "ಅವಧಿ ಮುಗಿದಿದೆ",
+    "expiring_soon": "ಶೀಘ್ರದಲ್ಲೇ ಮುಕ್ತಾಯ",
+    "paid": "ಪಾವತಿಸಲಾಗಿದೆ",
+    "pending": "ಬಾಕಿ ಉಳಿದಿದೆ",
+    "unpaid": "ಪಾವತಿಸಿಲ್ಲ",
+    "disputed": "ವಿವಾದದಲ್ಲಿದೆ"
+  },
+  "docs": {
+    "rc": "ನೋಂದಣಿ ಪ್ರಮಾಣಪತ್ರ (RC)",
+    "insurance": "ವಾಹನ ವಿಮೆ (Insurance)",
+    "puc": "ಮಾಲಿನ್ಯ ನಿಯಂತ್ರಣ ಪ್ರಮಾಣಪತ್ರ (PUC)",
+    "road_tax": "ರಸ್ತೆ ತೆರಿಗೆ (Road Tax)"
+  },
+  "actions": {
+    "verify_vehicle": "ವಾಹನ ಪರಿಶೀಲಿಸಿ",
+    "start_camera": "ಕ್ಯಾಮೆರಾ ಪ್ರಾರಂಭಿಸಿ",
+    "stop_camera": "ಕ್ಯಾಮೆರಾ ನಿಲ್ಲಿಸಿ",
+    "capture_scan": "ಫೋಟೋ ತೆಗೆದು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ",
+    "upload_image": "ಚಿತ್ರ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
+    "issue_challan": "ಡಿಜಿಟಲ್ ಚಲನ್ ನೀಡಿ",
+    "download_receipt": "PDF ರಸೀದಿ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",
+    "print": "ಪ್ರಿಂಟ್",
+    "export_excel": "ಎಕ್ಸೆಲ್ ರಫ್ತು",
+    "export_pdf": "PDF ರಫ್ತು",
+    "retry": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ"
+  },
+  "common": {
+    "registration_number": "ನೋಂದಣಿ ಸಂಖ್ಯೆ",
+    "owner": "ಮಾಲೀಕರ ಹೆಸರು",
+    "phone": "ದೂರವಾಣಿ",
+    "email": "ಇಮೇಲ್",
+    "maker_model": "ವಾಹನ ಮಾದರಿ",
+    "fuel": "ಇಂಧನ ವಿಧ",
+    "rto": "ನೋಂದಾಯಿತ RTO",
+    "fine_amount": "ದಂಡದ ಮೊತ್ತ",
+    "rule_section": "ನಿಯಮದ ಕಲಂ",
+    "due_date": "ಅಂತಿಮ ದಿನಾಂಕ",
+    "location": "ಸ್ಥಳ",
+    "officer": "ಅಧಿಕಾರಿ",
+    "badge": "ಬ್ಯಾಡ್ಜ್ ಸಂಖ್ಯೆ",
+    "outdoor_mode": "ಹೊರಾಂಗಣ ಗೋಚರತೆ",
+    "dark_mode": "ಡಾರ್ಕ್ ಮೋಡ್",
+    "voice_announce": "ಧ್ವನಿ ಪ್ರಕಟಣೆ"
+  }
+}

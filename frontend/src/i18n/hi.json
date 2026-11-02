@@ -1,0 +1,64 @@
+{
+  "app_name": "ROADGUARD",
+  "tagline": "स्मार्ट सत्यापन। तीव्र प्रवर्तन।",
+  "nav": {
+    "dashboard": "डैशबोर्ड",
+    "verification": "वाहन दस्तावेज़ सत्यापन",
+    "anpr_scanner": "ANPR स्कैनर",
+    "challans": "चालान प्रबंधन",
+    "new_challan": "नया चालान जारी करें",
+    "history": "उल्लंघन इतिहास",
+    "reports": "रिपोर्ट और एनालिटिक्स",
+    "admin": "एडमिन पैनल",
+    "settings": "सेटिंग्स",
+    "logout": "लॉग आउट",
+    "login": "अधिकारी लॉगिन",
+    "access_dashboard": "डैशबोर्ड खोलें"
+  },
+  "status": {
+    "valid": "वैध",
+    "expired": "समाप्त",
+    "expiring_soon": "शीघ्र समाप्त",
+    "paid": "भुगतान किया गया",
+    "pending": "लंबित",
+    "unpaid": "अदत्त",
+    "disputed": "विवादित"
+  },
+  "docs": {
+    "rc": "पंजीकरण प्रमाण पत्र (RC)",
+    "insurance": "वाहन बीमा (Insurance)",
+    "puc": "प्रदूषण नियंत्रण प्रमाण पत्र (PUC)",
+    "road_tax": "सड़क कर (Road Tax)"
+  },
+  "actions": {
+    "verify_vehicle": "वाहन सत्यापित करें",
+    "start_camera": "कैमरा चालू करें",
+    "stop_camera": "कैमरा बंद करें",
+    "capture_scan": "फोटो लें और स्कैन करें",
+    "upload_image": "नंबर प्लेट फोटो अपलोड करें",
+    "issue_challan": "डिजिटल चालान जारी करें",
+    "download_receipt": "PDF रसीद डाउनलोड करें",
+    "print": "प्रिंट करें",
+    "export_excel": "एक्सेल निर्यात करें",
+    "export_pdf": "PDF निर्यात करें",
+    "retry": "पुनः प्रयास करें"
+  },
+  "common": {
+    "registration_number": "पंजीकरण संख्या",
+    "owner": "मालिक का नाम",
+    "phone": "फोन नंबर",
+    "email": "ईमेल",
+    "maker_model": "वाहन मॉडल",
+    "fuel": "ईंधन प्रकार",
+    "rto": "पंजीकृत RTO",
+    "fine_amount": "जुर्माना राशि",
+    "rule_section": "नियम धारा",
+    "due_date": "नियत तारीख",
+    "location": "स्थान",
+    "officer": "अधिकारी",
+    "badge": "बैज नंबर",
+    "outdoor_mode": "धूप दृश्यता मोड",
+    "dark_mode": "डार्क मोड",
+    "voice_announce": "आवाज घोषणा"
+  }
+}

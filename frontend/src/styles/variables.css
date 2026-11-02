@@ -1,0 +1,30 @@
+:root {
+  --color-primary: #171E19;
+  --color-secondary: #272727;
+  --color-accent: #FFE17C;
+  --color-sage: #B7C6C2;
+  --color-background: #FFFFFF;
+  --color-surface: #F8F9FA;
+  --color-success: #22C55E;
+  --color-danger: #EF4444;
+  --color-warning: #F59E0B;
+}
+
+.dark {
+  --color-background: #0F1411;
+  --color-surface: #171E19;
+  --color-primary: #FFFFFF;
+  --color-secondary: #E5E7EB;
+}
+
+/* Outdoor High Contrast Mode */
+.outdoor-mode {
+  --color-background: #FFFFFF !important;
+  --color-surface: #FFFFFF !important;
+  --color-primary: #000000 !important;
+  --color-secondary: #000000 !important;
+  --color-accent: #FFD700 !important;
+  --color-sage: #000000 !important;
+  border-width: 2px !important;
+  font-weight: 700 !important;
+}

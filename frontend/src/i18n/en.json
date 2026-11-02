@@ -1,0 +1,64 @@
+{
+  "app_name": "ROADGUARD",
+  "tagline": "VERIFY SMARTER. ENFORCE FASTER.",
+  "nav": {
+    "dashboard": "Dashboard",
+    "verification": "Vehicle Verification",
+    "anpr_scanner": "ANPR Scanner",
+    "challans": "Challans",
+    "new_challan": "Issue Challan",
+    "history": "Violation History",
+    "reports": "Reports & Analytics",
+    "admin": "Admin Panel",
+    "settings": "Settings",
+    "logout": "Sign Out",
+    "login": "Officer Login",
+    "access_dashboard": "Access Dashboard"
+  },
+  "status": {
+    "valid": "Valid",
+    "expired": "Expired",
+    "expiring_soon": "Expiring Soon",
+    "paid": "Paid",
+    "pending": "Pending",
+    "unpaid": "Unpaid",
+    "disputed": "Disputed"
+  },
+  "docs": {
+    "rc": "Registration Certificate (RC)",
+    "insurance": "Vehicle Insurance",
+    "puc": "Pollution Under Control (PUC)",
+    "road_tax": "Road Tax Compliance"
+  },
+  "actions": {
+    "verify_vehicle": "Verify Vehicle",
+    "start_camera": "Start Camera",
+    "stop_camera": "Stop Camera",
+    "capture_scan": "Capture & Scan",
+    "upload_image": "Upload Plate Image",
+    "issue_challan": "Issue Digital Challan",
+    "download_receipt": "Download PDF Receipt",
+    "print": "Print",
+    "export_excel": "Export Excel",
+    "export_pdf": "Export PDF",
+    "retry": "Try Again"
+  },
+  "common": {
+    "registration_number": "Registration Number",
+    "owner": "Owner",
+    "phone": "Phone",
+    "email": "Email",
+    "maker_model": "Make & Model",
+    "fuel": "Fuel Type",
+    "rto": "Registered RTO",
+    "fine_amount": "Fine Amount",
+    "rule_section": "Rule Section",
+    "due_date": "Due Date",
+    "location": "Location",
+    "officer": "Officer",
+    "badge": "Badge ID",
+    "outdoor_mode": "Outdoor Visibility",
+    "dark_mode": "Dark Mode",
+    "voice_announce": "Voice Alert"
+  }
+}
