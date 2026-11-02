@@ -109,3 +109,4 @@ def preprocess_plate(plate_bgr: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         binarized = cv2.bitwise_not(binarized)
 
     return enhanced, binarized
+

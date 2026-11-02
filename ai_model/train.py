@@ -31,7 +31,9 @@ def main():
     print(f"Using device: {selected_device} (CUDA available: {torch.cuda.is_available()})")
 
     # 3. Select pre-trained base model
-    model = YOLO("yolov8n.pt")
+    weights_local = Path(__file__).parent / "yolov8n.pt"
+    model_source = str(weights_local) if weights_local.exists() else "yolov8n.pt"
+    model = YOLO(model_source)
     
     # 4. Train the model
     print(f"Starting training on unique dataset (Epochs: {args.epochs}, Batch: {args.batch})...")

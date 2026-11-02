@@ -183,3 +183,4 @@ def evaluate_full_anpr_pipeline():
 if __name__ == "__main__":
     evaluate_regex_correction_module()
     evaluate_full_anpr_pipeline()
+

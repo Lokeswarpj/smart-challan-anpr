@@ -30,5 +30,7 @@ build/
 runs/
 *.log
 storage/receipts/*.pdf
-storage/exports/*
+# Dataset & Local Links
+unique dataset/
+unique dataset
 

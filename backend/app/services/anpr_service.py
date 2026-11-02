@@ -171,3 +171,4 @@ class ANPRService:
 # Global singleton helper
 def get_anpr_service() -> ANPRService:
     return ANPRService()
+

@@ -17,7 +17,8 @@ class Settings:
         "DATABASE_URL",
         f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
-    SQLITE_FALLBACK_URL: str = "sqlite:///./vehicle_verification.db"
+    BACKEND_DIR: str = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    SQLITE_FALLBACK_URL: str = f"sqlite:///{os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'vehicle_verification.db').replace(os.sep, '/')}"
     
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "anpr-traffic-enforcement-super-secret-key-2026")

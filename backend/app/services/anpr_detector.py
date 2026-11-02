@@ -19,10 +19,16 @@ class PlateDetector:
         if weights_path and os.path.exists(weights_path):
             self.model_path = weights_path
         else:
-            # Fallback to yolov8n.pt in root directory
+            # Fallback to yolov8n.pt in ai_model/ or root directory
             root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-            default_weights = os.path.join(root_dir, "yolov8n.pt")
-            self.model_path = default_weights if os.path.exists(default_weights) else "yolov8n.pt"
+            model_weights = os.path.join(root_dir, "ai_model", "yolov8n.pt")
+            root_weights = os.path.join(root_dir, "yolov8n.pt")
+            if os.path.exists(model_weights):
+                self.model_path = model_weights
+            elif os.path.exists(root_weights):
+                self.model_path = root_weights
+            else:
+                self.model_path = "yolov8n.pt"
 
         print(f"[PlateDetector] Loading YOLOv8 model from: {self.model_path}")
         self.model = YOLO(self.model_path)
@@ -142,3 +148,4 @@ class PlateDetector:
             pass
             
         return None, (0, 0, 0, 0)
+
