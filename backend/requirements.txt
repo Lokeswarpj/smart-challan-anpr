@@ -1,0 +1,31 @@
+# Web API Framework
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+python-multipart>=0.0.9
+
+# Database & ORM
+SQLAlchemy>=2.0.28
+psycopg2-binary>=2.9.9
+
+# Computer Vision & OCR
+ultralytics>=8.1.0
+easyocr>=1.7.1
+opencv-python>=4.8.0
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Data Engineering & Science
+faker>=24.0.0
+numpy>=1.26.0
+pandas>=2.2.0
+rapidfuzz>=3.6.0
+openpyxl>=3.1.2
+
+# Document Generation & QR Code
+reportlab>=4.1.0
+qrcode[pil]>=7.4.2
+
+# Utilities
+python-dotenv>=1.0.1
+

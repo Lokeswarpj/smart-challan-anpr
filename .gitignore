@@ -1,0 +1,33 @@
+# Virtual environment
+.venv/
+env/
+venv/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Databases
+*.db
+*.sqlite3
+vehicle_verification.db
+
+# Environment variables
+.env
+!.env.example
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+.npm/
+
+# Large model checkpoints (keep base yolov8n.pt if needed, ignore large runs)
+runs/
+*.log
+storage/receipts/*.pdf
+storage/exports/*
