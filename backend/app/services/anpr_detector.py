@@ -19,11 +19,14 @@ class PlateDetector:
         if weights_path and os.path.exists(weights_path):
             self.model_path = weights_path
         else:
-            # Fallback to yolov8n.pt in ai_model/ or root directory
+            # Prioritize custom trained best.pt, fallback to yolov8n.pt
             root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+            custom_weights = os.path.join(root_dir, "ai_model", "best.pt")
             model_weights = os.path.join(root_dir, "ai_model", "yolov8n.pt")
             root_weights = os.path.join(root_dir, "yolov8n.pt")
-            if os.path.exists(model_weights):
+            if os.path.exists(custom_weights):
+                self.model_path = custom_weights
+            elif os.path.exists(model_weights):
                 self.model_path = model_weights
             elif os.path.exists(root_weights):
                 self.model_path = root_weights

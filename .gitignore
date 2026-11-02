@@ -28,9 +28,11 @@ build/
 
 # Large model checkpoints (keep base yolov8n.pt if needed, ignore large runs)
 runs/
+ai_model/trained_run/
 *.log
 storage/receipts/*.pdf
 # Dataset & Local Links
 unique dataset/
 unique dataset
+*.zip
 
