@@ -16,3 +16,6 @@ class DashboardSummaryResponse(BaseModel):
     violations_by_type: List[Dict[str, Any]]
     hourly_activity: List[Dict[str, Any]]
     recent_activity_log: List[Dict[str, Any]]
+    metrics: Optional[Dict[str, Any]] = None
+    activity_chart: Optional[List[Dict[str, Any]]] = None
+    document_breakdown: Optional[List[Dict[str, Any]]] = None

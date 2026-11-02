@@ -274,7 +274,7 @@ export default function Challans() {
                 <Button onClick={handlePrint} variant="primary" size="sm" icon={Printer}>
                   PRINT RECEIPT
                 </Button>
-                <Button onClick={handlePrint} variant="accent" size="sm" icon={Download}>
+                <Button onClick={() => challanService.downloadReceipt(selectedChallan.id)} variant="accent" size="sm" icon={Download}>
                   DOWNLOAD PDF
                 </Button>
               </div>

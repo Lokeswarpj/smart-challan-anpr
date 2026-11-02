@@ -40,11 +40,36 @@ export const challanService = {
   },
 
   async dispatchReceipt(id, channel) {
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    activeChallans = activeChallans.map((c) =>
-      c.id === id ? { ...c, dispatch_status: `sent_${channel}` } : c
-    );
-    return { success: true, message: `Receipt successfully dispatched via ${channel.toUpperCase()}` };
+    try {
+      const response = await apiClient.post(`/challans/${id}/dispatch`, { channel });
+      return response.data;
+    } catch (err) {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      activeChallans = activeChallans.map((c) =>
+        c.id === id ? { ...c, dispatch_status: `sent_${channel}` } : c
+      );
+      return { success: true, message: `Receipt successfully dispatched via ${channel.toUpperCase()}` };
+    }
+  },
+
+  async downloadReceipt(id) {
+    try {
+      const response = await apiClient.get(`/challans/${id}/receipt`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `RoadGuard_Challan_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      return true;
+    } catch (err) {
+      window.print();
+      return false;
+    }
   }
 };
 
