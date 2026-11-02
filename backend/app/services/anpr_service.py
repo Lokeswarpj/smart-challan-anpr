@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 import easyocr
 import torch
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List, Union, Tuple
 from app.services.anpr_detector import PlateDetector
 from app.services.cv_preprocessor import preprocess_plate
 from app.services.regex_service import process_and_correct_plate
@@ -169,6 +169,18 @@ class ANPRService:
         }
 
 # Global singleton helper
+_global_anpr_instance = None
+
 def get_anpr_service() -> ANPRService:
-    return ANPRService()
+    global _global_anpr_instance
+    if _global_anpr_instance is None:
+        _global_anpr_instance = ANPRService()
+    return _global_anpr_instance
+
+class LazyANPRServiceProxy:
+    def __getattr__(self, name):
+        return getattr(get_anpr_service(), name)
+
+anpr_service = LazyANPRServiceProxy()
+
 
