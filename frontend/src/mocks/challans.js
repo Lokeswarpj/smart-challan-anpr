@@ -137,3 +137,4 @@ export const VIOLATION_TYPES = [
     fine: 1500
   }
 ];
+

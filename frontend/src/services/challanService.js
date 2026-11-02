@@ -47,3 +47,4 @@ export const challanService = {
     return { success: true, message: `Receipt successfully dispatched via ${channel.toUpperCase()}` };
   }
 };
+

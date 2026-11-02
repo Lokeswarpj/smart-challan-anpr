@@ -23,3 +23,4 @@ export const adminService = {
     return MOCK_DASHBOARD.recent_activity_log;
   }
 };
+

@@ -49,3 +49,4 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
     </div>
   );
 }
+

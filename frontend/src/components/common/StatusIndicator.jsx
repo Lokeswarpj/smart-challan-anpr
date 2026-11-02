@@ -53,3 +53,4 @@ export default function StatusIndicator({ status, label, showIcon = true, size =
     </div>
   );
 }
+

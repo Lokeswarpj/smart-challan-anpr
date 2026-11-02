@@ -558,3 +558,4 @@ export const MOCK_VEHICLES = [
     ]
   }
 ];
+

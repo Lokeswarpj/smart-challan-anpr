@@ -25,3 +25,4 @@ export const reportService = {
     return true;
   }
 };
+

@@ -13,3 +13,4 @@ export default function Loader({ message = 'PROCESSING REQUEST...' }) {
     </div>
   );
 }
+
