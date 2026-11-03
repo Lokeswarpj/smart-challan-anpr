@@ -12,6 +12,8 @@ class BoundingBox(BaseModel):
     y1: int
     x2: int
     y2: int
+    img_width: Optional[int] = None
+    img_height: Optional[int] = None
 
 class ANPRDetectResponse(BaseModel):
     detected: bool

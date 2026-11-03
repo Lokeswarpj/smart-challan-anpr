@@ -62,9 +62,18 @@ async def detect_license_plate(
     plate_number = result.get("registration_number")
     confidence = result.get("confidence", 0.0)
     bbox_raw = result.get("bounding_box")
+    img_w = result.get("image_width")
+    img_h = result.get("image_height")
     bbox = None
     if bbox_raw and len(bbox_raw) == 4:
-        bbox = BoundingBox(x1=bbox_raw[0], y1=bbox_raw[1], x2=bbox_raw[2], y2=bbox_raw[3])
+        bbox = BoundingBox(
+            x1=int(bbox_raw[0]),
+            y1=int(bbox_raw[1]),
+            x2=int(bbox_raw[2]),
+            y2=int(bbox_raw[3]),
+            img_width=int(img_w) if img_w else None,
+            img_height=int(img_h) if img_h else None
+        )
 
     # Check database for matching vehicle record
     matched_vehicle = None

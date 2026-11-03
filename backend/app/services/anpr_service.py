@@ -117,6 +117,8 @@ class ANPRService:
         if image is None or image.size == 0:
             raise ValueError("Could not decode valid image pixels.")
 
+        orig_h, orig_w = image.shape[:2]
+
         # --- STAGE 1: Plate Detection (YOLOv8) ---
         t1 = time.perf_counter()
         cropped_plate, bbox, det_conf = self.detector.detect_plate(image)
@@ -196,6 +198,8 @@ class ANPRService:
                 "confidence": 0.0,
                 "is_valid_format": False,
                 "bounding_box": list(bbox) if bbox else None,
+                "image_width": orig_w,
+                "image_height": orig_h,
                 "execution_time_ms": total_time_ms,
                 "plate_image_base64": plate_b64,
                 "pipeline_stages": telemetry_stages,
@@ -209,6 +213,8 @@ class ANPRService:
             "confidence": min(0.99, max(0.60, combined_confidence)),
             "is_valid_format": True,
             "bounding_box": list(bbox),
+            "image_width": orig_w,
+            "image_height": orig_h,
             "execution_time_ms": total_time_ms,
             "plate_image_base64": plate_b64,
             "pipeline_stages": telemetry_stages

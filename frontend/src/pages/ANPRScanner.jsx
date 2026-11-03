@@ -27,6 +27,23 @@ export default function ANPRScanner() {
   const canvasRef = useRef(null);
   const navigate = useNavigate();
 
+  // Computes pixel-perfect percentage coordinates bounded to the actual plate
+  const boxStyle = React.useMemo(() => {
+    if (!result?.detected || !result?.bounding_box) return null;
+    const { x1, y1, x2, y2, img_width, img_height } = result.bounding_box;
+    if (!img_width || !img_height) return null;
+    const left = (x1 / img_width) * 100;
+    const top = (y1 / img_height) * 100;
+    const width = ((x2 - x1) / img_width) * 100;
+    const height = ((y2 - y1) / img_height) * 100;
+    return {
+      left: `${Math.max(0, left)}%`,
+      top: `${Math.max(0, top)}%`,
+      width: `${Math.min(100, width)}%`,
+      height: `${Math.min(100, height)}%`,
+    };
+  }, [result]);
+
   const pipelineStages = [
     { id: 1, name: "Plate Localization (YOLOv8)", desc: "Locates bounding box coordinates of number plate." },
     { id: 2, name: "OpenCV Deskewing & Threshold", desc: "Corrects perspective slant and optimizes contrast." },
@@ -134,34 +151,70 @@ export default function ANPRScanner() {
             </div>
 
             {/* Video Viewport Frame */}
-            <div className="relative aspect-video bg-black border-2 border-primary overflow-hidden flex items-center justify-center">
+            <div className="relative aspect-video bg-black border-2 border-primary overflow-hidden flex items-center justify-center p-1">
               {cameraActive ? (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
+                <div className="relative w-full h-full">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Live Viewfinder Guide */}
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div className="w-3/4 h-1/3 border-2 border-dashed border-accent/80 relative flex items-center justify-center">
+                      <div className="scanner-line w-full h-1 animate-pulse"></div>
+                      <span className="absolute -bottom-6 bg-black/85 text-accent text-[9px] font-mono font-bold px-2 py-0.5 border border-accent/40 uppercase">
+                        ALIGN LICENSE PLATE INSIDE BOX
+                      </span>
+                    </div>
+                  </div>
+                </div>
               ) : uploadedPreview ? (
-                <img
-                  src={uploadedPreview}
-                  alt="Captured vehicle plate"
-                  className="w-full h-full object-contain"
-                />
+                <div className="relative inline-flex items-center justify-center max-h-full max-w-full">
+                  <img
+                    src={uploadedPreview}
+                    alt="Captured vehicle plate"
+                    className="max-h-[440px] max-w-full object-contain block border border-primary/20"
+                  />
+
+                  {/* Scanning Laser Beam (Active only while YOLO is localizing) */}
+                  {processing && (
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden bg-accent/5 backdrop-blur-[0.5px]">
+                      <div className="animate-scan-sweep bg-accent shadow-[0_0_15px_#FFE17C]"></div>
+                      <div className="absolute bottom-2 left-2 right-2 text-center">
+                        <span className="inline-block bg-primary text-accent text-[10px] font-mono font-black px-2.5 py-1 border border-accent uppercase tracking-widest shadow-brutal-sm animate-pulse">
+                          YOLOv8 DETECTING NUMBER PLATE...
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dynamic Bounding Box Overlay Bounded Exactly to YOLO Coordinates */}
+                  {!processing && boxStyle && (
+                    <div
+                      className="absolute border-2 sm:border-[3px] border-accent shadow-[0_0_16px_rgba(255,225,124,0.85)] pointer-events-none transition-all duration-300 z-10"
+                      style={boxStyle}
+                    >
+                      {/* Brutalist Corner Brackets */}
+                      <div className="absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 border-primary bg-accent"></div>
+                      <div className="absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 border-primary bg-accent"></div>
+                      <div className="absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 border-primary bg-accent"></div>
+                      <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-primary bg-accent"></div>
+
+                      {/* Floating Badge Pin */}
+                      <span className="absolute -top-6 left-0 bg-accent text-primary text-[10px] font-mono font-black px-1.5 py-0.5 tracking-wider uppercase whitespace-nowrap shadow-brutal-sm flex items-center gap-1 border border-primary">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                        {result.registration_number || "PLATE"} • {(result.confidence * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="text-center text-sage p-8">
                   <Camera className="w-16 h-16 mx-auto mb-3 text-accent" />
                   <p className="font-sans text-xs">Camera is offline. Start camera or upload a plate photo.</p>
-                </div>
-              )}
-
-              {/* Reticle Scanner Line */}
-              {(cameraActive || processing) && (
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <div className="w-4/5 h-2/5 border-2 border-accent relative">
-                    <div className="scanner-line w-full h-1 animate-pulse"></div>
-                  </div>
                 </div>
               )}
 
@@ -230,10 +283,25 @@ export default function ANPRScanner() {
                   {result.registration_number}
                 </div>
 
-                <div className="flex items-center justify-between text-xs font-mono text-sage border-t border-gray-800 pt-3 mb-6">
+                <div className="flex items-center justify-between text-xs font-mono text-sage border-t border-gray-800 pt-3 mb-4">
                   <span>MODEL CONFIDENCE:</span>
                   <strong className="text-white">{(result.confidence * 100).toFixed(1)}%</strong>
                 </div>
+
+                {/* YOLOv8 Isolated Plate Crop Preview */}
+                {result.plate_crop_base64 && (
+                  <div className="mb-4 p-2.5 bg-black/50 border border-accent/40 shadow-inner">
+                    <div className="text-[10px] font-mono text-sage uppercase mb-1.5 flex items-center justify-between">
+                      <span>ISOLATED REGION OF INTEREST:</span>
+                      <span className="text-accent font-bold">YOLOv8 CROPPED</span>
+                    </div>
+                    <img
+                      src={result.plate_crop_base64}
+                      alt="Cropped License Plate"
+                      className="max-h-16 w-auto max-w-full object-contain mx-auto border border-accent shadow-sm"
+                    />
+                  </div>
+                )}
 
                 <Button
                   onClick={() => navigate(`/vehicle-verification?reg=${result.registration_number}`)}
