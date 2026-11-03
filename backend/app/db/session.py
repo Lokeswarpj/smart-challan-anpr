@@ -17,11 +17,11 @@ try:
         active_db_type = "SQLite"
         logger.info(f"Connected to SQLite database: {settings.DATABASE_URL}")
     else:
-        # Attempt primary PostgreSQL connection with fast 1s timeout
+        # Attempt primary PostgreSQL connection with resilient 10s timeout
         pg_engine = create_engine(
             settings.DATABASE_URL,
             pool_pre_ping=True,
-            connect_args={"connect_timeout": 1}
+            connect_args={"connect_timeout": 10}
         )
         with pg_engine.connect() as conn:
             pass
