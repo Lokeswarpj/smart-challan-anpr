@@ -46,7 +46,7 @@ class ANPRService:
     def run_ocr(self, preprocessed_images: List[np.ndarray], known_plates: Optional[List[str]] = None) -> Tuple[str, float]:
         """
         Executes EasyOCR with character whitelist and bounding box sorting.
-        Ranks candidate strings across passes and gives major priority boost to valid Indian plate formats.
+        Ranks candidate strings across passes with early exit as soon as a valid Indian plate format is confirmed.
         """
         whitelist = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         best_text = ""
@@ -86,6 +86,10 @@ class ANPRService:
                         best_score = priority_score
                         best_text = candidate_text
                         best_conf = avg_conf
+
+                    # EARLY EXIT: If this pass yields a valid Indian plate format, stop immediately!
+                    if is_valid and mod >= 0.95:
+                        break
             except Exception as e:
                 print(f"[ANPRService] OCR pass warning: {e}")
 
@@ -143,17 +147,28 @@ class ANPRService:
                 "message": "No vehicle license plate detected in image."
             }
 
+        # Standardize cropped plate height to 85px for CPU acceleration
+        ch, cw = cropped_plate.shape[:2]
+        if ch != 85 and ch > 0:
+            scale = 85.0 / ch
+            new_w = max(100, int(cw * scale))
+            cropped_plate = cv2.resize(
+                cropped_plate, (new_w, 85), 
+                interpolation=cv2.INTER_AREA if scale < 1 else cv2.INTER_CUBIC
+            )
+
         # --- STAGE 2: Preprocessing (OpenCV) ---
         t2 = time.perf_counter()
         enhanced_gray, binarized = preprocess_plate(cropped_plate)
         
-        # Also create HSRP-trimmed variants (trimming left ~10% where the blue IND stripe and hologram reside)
+        # Priority order: Enhanced Grayscale first, then Raw Cropped, then HSRP-trimmed, then Binarized
         h, w = cropped_plate.shape[:2]
-        ocr_images = [cropped_plate, enhanced_gray, binarized]
+        ocr_images = [enhanced_gray, cropped_plate]
         if w > 80:
             hsrp_trimmed = cropped_plate[:, int(w * 0.10):]
             enhanced_trimmed, _ = preprocess_plate(hsrp_trimmed)
             ocr_images.extend([hsrp_trimmed, enhanced_trimmed])
+        ocr_images.append(binarized)
 
         t_prep = (time.perf_counter() - t2) * 1000
         telemetry_stages.append({
