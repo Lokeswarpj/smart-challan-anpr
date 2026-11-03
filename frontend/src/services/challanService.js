@@ -5,12 +5,12 @@ import { MOCK_CHALLANS } from '../mocks/challans';
 let activeChallans = [...MOCK_CHALLANS];
 
 export const challanService = {
-  async getChallans() {
+  async getChallans(limit = 10) {
     try {
-      const response = await apiClient.get('/challans');
+      const response = await apiClient.get(`/challans?limit=${limit}`);
       return response.data;
     } catch (err) {
-      return activeChallans;
+      return activeChallans.slice(0, limit);
     }
   },
 

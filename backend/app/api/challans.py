@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, date, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.db.session import get_db
 from app.db.models import Challan, Vehicle, Officer, AuditLog
 from app.schemas.challan import (
@@ -58,7 +58,13 @@ def get_challans(
     if status and status.lower() != "all":
         q = q.filter(Challan.payment_status == status.lower())
 
-    challans = q.order_by(Challan.issued_at.desc()).offset(offset).limit(limit).all()
+    challans = (
+        q.options(joinedload(Challan.vehicle), joinedload(Challan.officer))
+        .order_by(Challan.issued_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
     return [build_challan_response(c) for c in challans]
 
 @router.post("", response_model=ChallanResponse, status_code=status.HTTP_201_CREATED)

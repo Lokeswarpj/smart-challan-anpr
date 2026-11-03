@@ -4,11 +4,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, date
 from app.db.session import get_db
+import time
 from app.db.models import Vehicle, Challan, AuditLog, Officer
 from app.schemas.report import DashboardSummaryResponse
 from app.api.dependencies import get_current_officer
 
 router = APIRouter(prefix="/reports", tags=["Reports & Analytics"])
+
+_station_cache = None
+_station_cache_time = 0.0
 
 @router.get("/dashboard", response_model=DashboardSummaryResponse)
 def get_dashboard_summary(
@@ -16,6 +20,11 @@ def get_dashboard_summary(
     db: Session = Depends(get_db),
     officer: Officer = Depends(get_current_officer)
 ):
+    global _station_cache, _station_cache_time
+
+    if scope == "station" and _station_cache and (time.time() - _station_cache_time < 30):
+        return _station_cache
+
     if scope == "personal":
         # 1. Personal Shift Metrics for the logged-in officer
         my_audits = (
@@ -190,7 +199,7 @@ def get_dashboard_summary(
         {"name": "Expired / Non-Compliant", "count": active_violations, "color": "#EF4444"}
     ]
 
-    return DashboardSummaryResponse(
+    summary_resp = DashboardSummaryResponse(
         total_scanned=total_scanned,
         total_verified=total_vehicles,
         active_violations=active_violations,
@@ -203,6 +212,9 @@ def get_dashboard_summary(
         activity_chart=activity_chart,
         document_breakdown=document_breakdown
     )
+    _station_cache = summary_resp
+    _station_cache_time = time.time()
+    return summary_resp
 
 @router.get("/export")
 def export_report_file(

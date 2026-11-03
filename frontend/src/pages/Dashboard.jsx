@@ -40,16 +40,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     let isMounted = true;
-    Promise.all([
-      reportService.getDashboardAnalytics('station'),
-      reportService.getDashboardAnalytics('personal'),
-      challanService.getChallans(),
-    ])
-      .then(([stRes, psRes, chRes]) => {
+
+    // Load Station fleet overview first for sub-second initial paint
+    reportService.getDashboardAnalytics('station')
+      .then((stRes) => {
         if (isMounted) {
           setStationData(stRes);
-          setPersonalData(psRes);
-          setChallans(chRes || []);
           setLoading(false);
         }
       })
@@ -57,14 +53,28 @@ export default function Dashboard() {
         if (isMounted) setLoading(false);
       });
 
+    // Load Personal shift scope in parallel
+    reportService.getDashboardAnalytics('personal')
+      .then((psRes) => {
+        if (isMounted) setPersonalData(psRes);
+      })
+      .catch(() => {});
+
+    // Load recent 6 challans in parallel
+    challanService.getChallans(6)
+      .then((chRes) => {
+        if (isMounted) setChallans(chRes || []);
+      })
+      .catch(() => {});
+
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const data = viewScope === 'station' ? stationData : personalData;
+  const data = (viewScope === 'station' ? stationData : personalData) || stationData;
 
-  if (loading || !data) {
+  if (loading && !data) {
     return (
       <div className="p-12 text-center font-mono font-bold text-sm text-secondary animate-pulse">
         CONNECTING TO ROADGUARD SECURE CHECKPOINT TELEMETRY...
