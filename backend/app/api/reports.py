@@ -12,9 +12,99 @@ router = APIRouter(prefix="/reports", tags=["Reports & Analytics"])
 
 @router.get("/dashboard", response_model=DashboardSummaryResponse)
 def get_dashboard_summary(
+    scope: str = Query("station", pattern="^(station|personal)$"),
     db: Session = Depends(get_db),
     officer: Officer = Depends(get_current_officer)
 ):
+    if scope == "personal":
+        # 1. Personal Shift Metrics for the logged-in officer
+        my_audits = (
+            db.query(AuditLog)
+            .filter((AuditLog.officer_id == officer.id) | (AuditLog.officer_badge == officer.badge_number))
+            .all()
+        )
+        total_scanned = len(my_audits)
+        unique_plates = set(a.registration_queried for a in my_audits if a.registration_queried)
+        total_vehicles = len(unique_plates)
+
+        # Challans issued by this officer
+        my_challans = db.query(Challan).filter(Challan.officer_id == officer.id).all()
+        challans_issued = len(my_challans)
+        active_violations = sum(1 for c in my_challans if c.payment_status == "unpaid")
+        total_fines_collected = sum(c.fine_amount for c in my_challans if c.payment_status == "paid")
+
+        # Violations by Type for this officer
+        type_counts = {}
+        for c in my_challans:
+            type_counts[c.violation_title] = type_counts.get(c.violation_title, 0) + 1
+        violations_by_type = [
+            {"type": title, "count": count, "percentage": round((count / max(challans_issued, 1)) * 100, 1)}
+            for title, count in sorted(type_counts.items(), key=lambda x: x[1], reverse=True)[:6]
+        ]
+
+        # Hourly Activity for this officer
+        # Standard checkpoint hours: 08:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00
+        time_slots = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00"]
+        hourly_activity = []
+        for slot in time_slots:
+            slot_h = int(slot.split(":")[0])
+            scans_count = sum(1 for a in my_audits if a.timestamp and abs(a.timestamp.hour - slot_h) <= 1)
+            viols_count = sum(1 for c in my_challans if c.issued_at and abs(c.issued_at.hour - slot_h) <= 1)
+            hourly_activity.append({
+                "hour": slot,
+                "scanned": scans_count,
+                "violations": viols_count
+            })
+
+        recent_activity_log = [
+            {
+                "id": a.id,
+                "action": a.action,
+                "officer_badge": a.officer_badge,
+                "plate": a.registration_queried,
+                "timestamp": a.timestamp.strftime("%Y-%m-%d %H:%M:%S") if a.timestamp else "",
+                "details": a.details or ""
+            }
+            for a in sorted(my_audits, key=lambda x: x.timestamp or datetime.min, reverse=True)[:10]
+        ]
+
+        compliance_rate = round(max(0.0, 100.0 - ((active_violations / max(total_vehicles, 1)) * 100.0)), 1) if total_vehicles > 0 else 100.0
+
+        metrics_dict = {
+            "total_checked": total_vehicles,
+            "valid_vehicles": max(0, total_vehicles - active_violations),
+            "expired_documents": active_violations,
+            "amber_warnings": 0,
+            "challans_issued": challans_issued,
+            "unpaid_challans": active_violations,
+            "collection_amount": float(total_fines_collected)
+        }
+
+        activity_chart = [
+            {"time": h["hour"], "checks": h["scanned"], "violations": h["violations"]}
+            for h in hourly_activity
+        ]
+
+        document_breakdown = [
+            {"name": "Compliant Vehicles", "count": max(0, total_vehicles - active_violations), "color": "#22C55E"},
+            {"name": "Violations Issued", "count": active_violations, "color": "#EF4444"}
+        ]
+
+        return DashboardSummaryResponse(
+            total_scanned=total_scanned,
+            total_verified=total_vehicles,
+            active_violations=active_violations,
+            total_fines_collected=float(total_fines_collected),
+            compliance_rate=compliance_rate,
+            violations_by_type=violations_by_type,
+            hourly_activity=hourly_activity,
+            recent_activity_log=recent_activity_log,
+            metrics=metrics_dict,
+            activity_chart=activity_chart,
+            document_breakdown=document_breakdown
+        )
+
+    # Default: Station-Wide Overview
     total_vehicles = db.query(func.count(Vehicle.registration_number)).scalar() or 0
     total_scans = db.query(func.count(AuditLog.id)).scalar() or 0
     total_scanned = max(total_scans, total_vehicles * 4)  # realistically higher for fleet queries

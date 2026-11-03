@@ -32,41 +32,42 @@ import { challanService } from '../services/challanService';
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [challans, setChallans] = useState([]);
+  const [viewScope, setViewScope] = useState('station'); // 'station' | 'personal'
 
   useEffect(() => {
-    reportService.getDashboardAnalytics().then(setData);
+    reportService.getDashboardAnalytics(viewScope).then(setData);
     challanService.getChallans().then(setChallans);
-  }, []);
+  }, [viewScope]);
 
   if (!data) return null;
 
   const metrics = [
     {
-      label: 'TOTAL VEHICLES CHECKED',
-      value: data.metrics.total_checked,
+      label: viewScope === 'station' ? 'TOTAL VEHICLES CHECKED' : 'MY VEHICLES VERIFIED',
+      value: data.metrics?.total_checked ?? 0,
       icon: Car,
-      change: '+14% today',
+      change: viewScope === 'station' ? '+14% today' : `${data.total_scanned} scans logged`,
       variant: 'primary',
     },
     {
       label: 'FULLY COMPLIANT (ALL GREEN)',
-      value: data.metrics.valid_vehicles,
+      value: data.metrics?.valid_vehicles ?? 0,
       icon: CheckCircle2,
-      change: '70.3% compliance rate',
+      change: `${data.compliance_rate}% compliance rate`,
       variant: 'success',
     },
     {
       label: 'EXPIRED / PENDING WARNINGS',
-      value: data.metrics.expired_documents,
+      value: data.metrics?.expired_documents ?? 0,
       icon: AlertTriangle,
-      change: `${data.metrics.amber_warnings} expiring soon`,
+      change: viewScope === 'station' ? `${data.metrics?.amber_warnings ?? 0} expiring soon` : 'Violations issued',
       variant: 'danger',
     },
     {
-      label: 'TOTAL CHALLANS ISSUED',
-      value: data.metrics.challans_issued,
+      label: viewScope === 'station' ? 'TOTAL CHALLANS ISSUED' : 'MY CHALLANS ISSUED',
+      value: data.metrics?.challans_issued ?? 0,
       icon: Receipt,
-      change: `₹${(data.metrics.collection_amount / 1000).toFixed(1)}k penalty logged`,
+      change: `₹${((data.metrics?.collection_amount ?? 0) / 1000).toFixed(1)}k penalty logged`,
       variant: 'accent',
     },
   ];
@@ -91,6 +92,44 @@ export default function Dashboard() {
           </div>
         }
       />
+
+      {/* Scope Switcher: Station-Wide vs Personal Shift */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-surface border-2 border-primary shadow-brutal p-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono font-bold uppercase text-primary dark:text-white">
+            TELEMETRY VIEW:
+          </span>
+          <span className="text-[11px] font-sans text-secondary dark:text-gray-400">
+            {viewScope === 'station'
+              ? 'Central Division & Checkpoint Fleet Overview (All Officers)'
+              : 'Personal Shift Activity & Scans Logged Under Your Badge'}
+          </span>
+        </div>
+        <div className="inline-flex border-2 border-primary bg-surface dark:bg-surface-dark p-0.5 shadow-brutal-sm">
+          <button
+            type="button"
+            onClick={() => setViewScope('station')}
+            className={`px-3 py-1.5 text-xs font-mono font-bold uppercase transition-all ${
+              viewScope === 'station'
+                ? 'bg-primary text-accent shadow-sm'
+                : 'text-primary dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            🏢 STATION FLEET
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewScope('personal')}
+            className={`px-3 py-1.5 text-xs font-mono font-bold uppercase transition-all ${
+              viewScope === 'personal'
+                ? 'bg-accent text-primary shadow-sm font-black'
+                : 'text-primary dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            👮 MY SHIFT ONLY
+          </button>
+        </div>
+      </div>
 
       {/* 4 Primary Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -129,14 +168,16 @@ export default function Dashboard() {
           <div className="flex items-center justify-between pb-4 border-b border-primary/20 mb-6">
             <div>
               <h3 className="font-heading text-xl text-primary dark:text-white">
-                HOURLY VERIFICATION VOLUME
+                HOURLY VERIFICATION VOLUME {viewScope === 'personal' ? '(MY SHIFT)' : '(STATION FLEET)'}
               </h3>
               <p className="text-xs font-sans text-secondary dark:text-gray-400">
-                Vehicle inspection throughput vs detected violations across shifts.
+                {viewScope === 'personal'
+                  ? 'Real-time vehicle scans & citations logged under your officer badge today.'
+                  : 'Vehicle inspection throughput vs detected violations across shifts.'}
               </p>
             </div>
             <span className="text-xs font-mono bg-accent text-primary px-2 py-0.5 border border-primary font-bold">
-              TODAY
+              {viewScope === 'personal' ? 'MY SHIFT' : 'STATION'}
             </span>
           </div>
 

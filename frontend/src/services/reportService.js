@@ -2,9 +2,9 @@ import apiClient from './apiClient';
 import { MOCK_DASHBOARD } from '../mocks/dashboard';
 
 export const reportService = {
-  async getDashboardAnalytics() {
+  async getDashboardAnalytics(scope = 'station') {
     try {
-      const response = await apiClient.get('/reports/dashboard');
+      const response = await apiClient.get(`/reports/dashboard?scope=${scope}`);
       return response.data;
     } catch (err) {
       return MOCK_DASHBOARD;
