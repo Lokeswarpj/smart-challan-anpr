@@ -26,48 +26,79 @@ import {
 import PageHeader from '../components/layout/PageHeader';
 import Button from '../components/common/Button';
 import Badge from '../components/common/Badge';
+import { useAuth } from '../context/AuthContext';
 import { reportService } from '../services/reportService';
 import { challanService } from '../services/challanService';
 
 export default function Dashboard() {
-  const [data, setData] = useState(null);
+  const { officer } = useAuth();
+  const [stationData, setStationData] = useState(null);
+  const [personalData, setPersonalData] = useState(null);
   const [challans, setChallans] = useState([]);
   const [viewScope, setViewScope] = useState('station'); // 'station' | 'personal'
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    reportService.getDashboardAnalytics(viewScope).then(setData);
-    challanService.getChallans().then(setChallans);
-  }, [viewScope]);
+    let isMounted = true;
+    Promise.all([
+      reportService.getDashboardAnalytics('station'),
+      reportService.getDashboardAnalytics('personal'),
+      challanService.getChallans(),
+    ])
+      .then(([stRes, psRes, chRes]) => {
+        if (isMounted) {
+          setStationData(stRes);
+          setPersonalData(psRes);
+          setChallans(chRes || []);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setLoading(false);
+      });
 
-  if (!data) return null;
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const data = viewScope === 'station' ? stationData : personalData;
+
+  if (loading || !data) {
+    return (
+      <div className="p-12 text-center font-mono font-bold text-sm text-secondary animate-pulse">
+        CONNECTING TO ROADGUARD SECURE CHECKPOINT TELEMETRY...
+      </div>
+    );
+  }
 
   const metrics = [
     {
       label: viewScope === 'station' ? 'TOTAL VEHICLES CHECKED' : 'MY VEHICLES VERIFIED',
       value: data.metrics?.total_checked ?? 0,
       icon: Car,
-      change: viewScope === 'station' ? '+14% today' : `${data.total_scanned} scans logged`,
+      change: viewScope === 'station' ? '+14% division fleet today' : `${data.total_scanned ?? 0} scans logged under badge`,
       variant: 'primary',
     },
     {
       label: 'FULLY COMPLIANT (ALL GREEN)',
       value: data.metrics?.valid_vehicles ?? 0,
       icon: CheckCircle2,
-      change: `${data.compliance_rate}% compliance rate`,
+      change: `${data.compliance_rate ?? 100}% compliance rate`,
       variant: 'success',
     },
     {
       label: 'EXPIRED / PENDING WARNINGS',
       value: data.metrics?.expired_documents ?? 0,
       icon: AlertTriangle,
-      change: viewScope === 'station' ? `${data.metrics?.amber_warnings ?? 0} expiring soon` : 'Violations issued',
+      change: viewScope === 'station' ? `${data.metrics?.amber_warnings ?? 0} expiring soon` : `${data.metrics?.expired_documents ?? 0} violations issued`,
       variant: 'danger',
     },
     {
       label: viewScope === 'station' ? 'TOTAL CHALLANS ISSUED' : 'MY CHALLANS ISSUED',
       value: data.metrics?.challans_issued ?? 0,
       icon: Receipt,
-      change: `₹${((data.metrics?.collection_amount ?? 0) / 1000).toFixed(1)}k penalty logged`,
+      change: `₹${((data.metrics?.collection_amount ?? 0) / 1000).toFixed(1)}k penalties logged`,
       variant: 'accent',
     },
   ];
@@ -101,8 +132,8 @@ export default function Dashboard() {
           </span>
           <span className="text-[11px] font-sans text-secondary dark:text-gray-400">
             {viewScope === 'station'
-              ? 'Central Division & Checkpoint Fleet Overview (All Officers)'
-              : 'Personal Shift Activity & Scans Logged Under Your Badge'}
+              ? 'Central Division & Checkpoint Fleet Overview (All Officers Across Division)'
+              : `Personal Shift Activity & Scans Logged Under Your Badge (${officer?.badge_number || 'KA-POL-2026'})`}
           </span>
         </div>
         <div className="inline-flex border-2 border-primary bg-surface dark:bg-surface-dark p-0.5 shadow-brutal-sm">
@@ -111,8 +142,8 @@ export default function Dashboard() {
             onClick={() => setViewScope('station')}
             className={`px-3 py-1.5 text-xs font-mono font-bold uppercase transition-all ${
               viewScope === 'station'
-                ? 'bg-primary text-accent shadow-sm'
-                : 'text-primary dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                ? 'bg-accent text-primary shadow-sm font-black border border-primary'
+                : 'text-secondary dark:text-gray-300 hover:text-primary dark:hover:text-white font-bold'
             }`}
           >
             🏢 STATION FLEET
@@ -122,8 +153,8 @@ export default function Dashboard() {
             onClick={() => setViewScope('personal')}
             className={`px-3 py-1.5 text-xs font-mono font-bold uppercase transition-all ${
               viewScope === 'personal'
-                ? 'bg-accent text-primary shadow-sm font-black'
-                : 'text-primary dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                ? 'bg-accent text-primary shadow-sm font-black border border-primary'
+                : 'text-secondary dark:text-gray-300 hover:text-primary dark:hover:text-white font-bold'
             }`}
           >
             👮 MY SHIFT ONLY
@@ -230,23 +261,32 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-4">
-              {data.document_breakdown.map((item, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex justify-between text-xs font-sans font-bold">
-                    <span className="text-primary dark:text-gray-200">{item.name}</span>
-                    <span className="font-mono text-secondary dark:text-gray-400">{item.count}</span>
-                  </div>
-                  <div className="w-full bg-surface dark:bg-gray-800 h-2 border border-primary/20">
-                    <div
-                      className="h-full"
-                      style={{
-                        backgroundColor: item.color,
-                        width: `${Math.min(100, (item.count / 310) * 100)}%`,
-                      }}
-                    ></div>
-                  </div>
+              {data.document_breakdown && data.document_breakdown.length > 0 ? (
+                data.document_breakdown.map((item, idx) => {
+                  const maxCount = Math.max(...data.document_breakdown.map((d) => d.count), 1);
+                  return (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex justify-between text-xs font-sans font-bold">
+                        <span className="text-primary dark:text-gray-200">{item.name}</span>
+                        <span className="font-mono text-secondary dark:text-gray-400">{item.count}</span>
+                      </div>
+                      <div className="w-full bg-surface dark:bg-gray-800 h-2 border border-primary/20">
+                        <div
+                          className="h-full transition-all duration-300"
+                          style={{
+                            backgroundColor: item.color,
+                            width: `${item.count > 0 ? Math.min(100, Math.max(8, (item.count / maxCount) * 100)) : 0}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-6 text-center text-xs font-mono text-secondary">
+                  No document records logged for this scope yet.
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -314,24 +354,30 @@ export default function Dashboard() {
           </div>
 
           <div className="divide-y divide-gray-100 dark:divide-gray-800 font-sans text-xs">
-            {data.recent_activity_log.map((log) => (
-              <div key={log.id} className="py-3 flex items-start justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono font-bold text-accent bg-primary px-1.5 py-0.5 text-[10px]">
-                      {log.officer}
-                    </span>
-                    <span className="font-bold text-primary dark:text-white">{log.action}</span>
+            {data.recent_activity_log && data.recent_activity_log.length > 0 ? (
+              data.recent_activity_log.map((log) => (
+                <div key={log.id} className="py-3 flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono font-bold text-accent bg-primary px-1.5 py-0.5 text-[10px]">
+                        {log.officer || log.officer_badge}
+                      </span>
+                      <span className="font-bold text-primary dark:text-white">{log.action}</span>
+                    </div>
+                    <p className="text-secondary dark:text-gray-300">
+                      Plate: <strong className="font-mono">{log.plate}</strong> — {log.result || log.details || 'Verification logged'}
+                    </p>
                   </div>
-                  <p className="text-secondary dark:text-gray-300">
-                    Plate: <strong className="font-mono">{log.plate}</strong> — {log.result}
-                  </p>
+                  <span className="text-[10px] font-mono text-gray-500 flex-shrink-0">
+                    {log.timestamp}
+                  </span>
                 </div>
-                <span className="text-[10px] font-mono text-gray-500 flex-shrink-0">
-                  {log.timestamp}
-                </span>
+              ))
+            ) : (
+              <div className="py-8 text-center text-xs font-mono text-secondary dark:text-gray-400">
+                No checkpoint audit events recorded under your badge for this shift yet.
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>

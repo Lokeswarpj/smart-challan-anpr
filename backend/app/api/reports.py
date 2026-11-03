@@ -60,10 +60,12 @@ def get_dashboard_summary(
             {
                 "id": a.id,
                 "action": a.action,
+                "officer": a.officer_badge,
                 "officer_badge": a.officer_badge,
                 "plate": a.registration_queried,
                 "timestamp": a.timestamp.strftime("%Y-%m-%d %H:%M:%S") if a.timestamp else "",
-                "details": a.details or ""
+                "details": a.details or "",
+                "result": a.details or a.action
             }
             for a in sorted(my_audits, key=lambda x: x.timestamp or datetime.min, reverse=True)[:10]
         ]
@@ -86,8 +88,11 @@ def get_dashboard_summary(
         ]
 
         document_breakdown = [
-            {"name": "Compliant Vehicles", "count": max(0, total_vehicles - active_violations), "color": "#22C55E"},
-            {"name": "Violations Issued", "count": active_violations, "color": "#EF4444"}
+            {"name": "RC Valid", "count": sum(1 for a in my_audits if "rc_valid" in (a.details or "").lower()), "color": "#22C55E"},
+            {"name": "Insurance Valid", "count": sum(1 for a in my_audits if "insurance_valid" in (a.details or "").lower()), "color": "#22C55E"},
+            {"name": "PUC Valid", "count": sum(1 for a in my_audits if "puc_valid" in (a.details or "").lower()), "color": "#22C55E"},
+            {"name": "Road Tax Paid", "count": sum(1 for a in my_audits if "tax_valid" in (a.details or "").lower()), "color": "#22C55E"},
+            {"name": "Expired / Non-Compliant", "count": active_violations, "color": "#EF4444"}
         ]
 
         return DashboardSummaryResponse(
@@ -150,10 +155,12 @@ def get_dashboard_summary(
         recent_activity_log.append({
             "id": a.id,
             "action": a.action,
+            "officer": a.officer_badge,
             "officer_badge": a.officer_badge,
             "plate": a.registration_queried,
             "timestamp": a.timestamp.strftime("%Y-%m-%d %H:%M:%S") if a.timestamp else "",
-            "details": a.details or ""
+            "details": a.details or "",
+            "result": a.details or a.action
         })
 
     compliance_rate = round(max(0.0, 100.0 - ((active_violations / max(total_vehicles, 1)) * 20.0)), 1)
