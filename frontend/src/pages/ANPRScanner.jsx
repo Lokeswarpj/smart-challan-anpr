@@ -244,6 +244,31 @@ export default function ANPRScanner() {
                   OPEN COMPLETE VERIFICATION <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </div>
+            ) : result.is_network_error ? (
+              <div className="bg-white dark:bg-surface border-2 border-warning shadow-brutal p-6 relative overflow-hidden">
+                <div className="inline-block bg-warning text-black px-2.5 py-0.5 text-[10px] font-mono font-black uppercase mb-3">
+                  BACKEND OFFLINE
+                </div>
+
+                <div className="text-xs font-mono text-warning uppercase font-bold">STATUS: CONNECTION FAILED</div>
+                <div className="font-heading text-2xl text-primary dark:text-white my-2">
+                  COULD NOT REACH BACKEND (PORT 8000)
+                </div>
+
+                <p className="text-xs text-sage font-sans mb-4 leading-relaxed">
+                  The frontend client could not reach the FastAPI neural vision server at <code>http://localhost:8000</code>.
+                </p>
+
+                <div className="p-3 bg-gray-50 dark:bg-surface-dark border border-dashed border-gray-300 dark:border-gray-700 text-[11px] font-mono text-sage space-y-1 mb-4">
+                  <div>• Ensure the backend process is active: <code>uvicorn main:app --port 8000</code></div>
+                  <div>• Verify http://localhost:8000/docs loads in your browser.</div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs font-mono text-sage border-t border-gray-200 dark:border-gray-800 pt-3">
+                  <span>NETWORK STATUS:</span>
+                  <strong className="text-warning">ERR_CONNECTION_REFUSED</strong>
+                </div>
+              </div>
             ) : (
               <div className="bg-white dark:bg-surface border-2 border-red-500 shadow-brutal p-6 relative overflow-hidden">
                 <div className="inline-block bg-red-500 text-white px-2.5 py-0.5 text-[10px] font-mono font-black uppercase mb-3">
