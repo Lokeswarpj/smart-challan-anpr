@@ -83,13 +83,17 @@ export default function ANPRScanner() {
     setProcessing(true);
     setResult(null);
 
-    // Animate through pipeline stages for transparency and visual clarity
-    for (let i = 1; i <= 5; i++) {
+    // Fire neural vision inference immediately in parallel with UI stage tracker
+    const detectPromise = anprService.detectPlate(file);
+
+    // Step through visual telemetry stages concurrently
+    for (let i = 1; i <= 4; i++) {
       setActiveStep(i);
-      await new Promise((res) => setTimeout(res, 250));
+      await new Promise((res) => setTimeout(res, 180));
     }
 
-    const res = await anprService.detectPlate(file);
+    const res = await detectPromise;
+    setActiveStep(5);
     setResult(res);
     setProcessing(false);
   };
