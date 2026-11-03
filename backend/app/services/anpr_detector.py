@@ -61,22 +61,25 @@ class PlateDetector:
                 conf = float(box.conf[0].item())
                 coords = box.xyxy[0].cpu().numpy().astype(int)
                 x1, y1, x2, y2 = coords
+                bw = x2 - x1
+                bh = y2 - y1
+                box_aspect = bw / float(bh) if bh > 0 else 0.0
                 
-                # Check if trained custom class for license plate (usually class 0 or 'license_plate')
+                # Check if trained custom class for license plate (usually class 0 or 'LicensePlate')
                 cls_name = self.model.names.get(cls_id, "")
-                if "plate" in cls_name.lower() or cls_id == 0:
-                    if conf > best_conf:
+                if ("plate" in cls_name.lower() or cls_id == 0) and conf >= 0.35:
+                    # Validate horizontal aspect ratio for standard plates (typically 2.0 to 6.0)
+                    if 1.8 <= box_aspect <= 6.5 and conf > best_conf:
                         best_conf = conf
                         best_box = (x1, y1, x2, y2)
                         # Add slight 5% margin around the plate
-                        pad_x = int((x2 - x1) * 0.05)
-                        pad_y = int((y2 - y1) * 0.08)
+                        pad_x = int(bw * 0.05)
+                        pad_y = int(bh * 0.08)
                         crop_x1 = max(0, x1 - pad_x)
                         crop_y1 = max(0, y1 - pad_y)
                         crop_x2 = min(w, x2 + pad_x)
                         crop_y2 = min(h, y2 + pad_y)
                         best_crop = image[crop_y1:crop_y2, crop_x1:crop_x2]
-                        break
 
                 # If detected vehicle (car, motorcycle, bus, truck), look in vehicle lower half
                 elif cls_name in ["car", "motorcycle", "bus", "truck"]:
@@ -100,20 +103,16 @@ class PlateDetector:
                 best_box = box
                 best_conf = 0.72
 
-        # 3. Fallback: If image itself is already a tight cropped plate
+        # 3. Fallback: If image itself is ALREADY a tight cropped plate photo
         if best_crop is None or best_crop.size == 0:
             aspect = w / float(h)
-            if 2.0 <= aspect <= 5.5:  # Standard plate aspect ratio
+            if 2.0 <= aspect <= 5.5 and w >= 80 and h >= 20:  # Standard plate aspect ratio
                 best_crop = image
                 best_box = (0, 0, w, h)
-                best_conf = 0.80
+                best_conf = 0.75
             else:
-                # Default to central 60%
-                cx1, cy1 = int(w * 0.2), int(h * 0.3)
-                cx2, cy2 = int(w * 0.8), int(h * 0.7)
-                best_crop = image[cy1:cy2, cx1:cx2]
-                best_box = (cx1, cy1, cx2, cy2)
-                best_conf = 0.55
+                # No plate detected in frame
+                return None, (0, 0, 0, 0), 0.0
 
         return best_crop, best_box, best_conf
 

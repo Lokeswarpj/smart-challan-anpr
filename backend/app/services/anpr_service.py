@@ -43,12 +43,14 @@ class ANPRService:
         self._initialized = True
         print("[ANPRService] ANPR Vision Pipeline Ready.")
 
-    def run_ocr(self, preprocessed_images: List[np.ndarray]) -> Tuple[str, float]:
+    def run_ocr(self, preprocessed_images: List[np.ndarray], known_plates: Optional[List[str]] = None) -> Tuple[str, float]:
         """
         Executes EasyOCR with character whitelist and bounding box sorting.
+        Ranks candidate strings across passes and gives major priority boost to valid Indian plate formats.
         """
         whitelist = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         best_text = ""
+        best_score = -1.0
         best_conf = 0.0
 
         for img in preprocessed_images:
@@ -67,6 +69,9 @@ class ANPRService:
                 confs = []
                 for bbox, text, conf in results_sorted:
                     clean_piece = text.strip()
+                    # Discard standalone IND and INDIA tags from HSRP stripe
+                    if clean_piece in ['IND', 'INDIA']:
+                        continue
                     if clean_piece:
                         extracted_parts.append(clean_piece)
                         confs.append(conf)
@@ -74,9 +79,13 @@ class ANPRService:
                 candidate_text = "".join(extracted_parts)
                 avg_conf = float(np.mean(confs)) if confs else 0.0
                 
-                if len(candidate_text) >= 8 and avg_conf > best_conf:
-                    best_text = candidate_text
-                    best_conf = avg_conf
+                if len(candidate_text) >= 7:
+                    corrected, is_valid, mod = process_and_correct_plate(candidate_text, known_plates)
+                    priority_score = (avg_conf * mod) + (2.0 if is_valid else 0.0)
+                    if priority_score > best_score:
+                        best_score = priority_score
+                        best_text = candidate_text
+                        best_conf = avg_conf
             except Exception as e:
                 print(f"[ANPRService] OCR pass warning: {e}")
 
@@ -114,13 +123,36 @@ class ANPRService:
         t_det = (time.perf_counter() - t1) * 1000
         telemetry_stages.append({
             "name": "Plate Localization (YOLOv8)",
-            "status": "completed",
+            "status": "completed" if cropped_plate is not None else "failed",
             "time_ms": round(t_det, 1)
         })
+
+        if cropped_plate is None:
+            return {
+                "detected": False,
+                "registration_number": "",
+                "raw_ocr": "",
+                "confidence": 0.0,
+                "is_valid_format": False,
+                "bounding_box": None,
+                "execution_time_ms": round(t_det, 1),
+                "plate_image_base64": None,
+                "pipeline_stages": telemetry_stages,
+                "message": "No vehicle license plate detected in image."
+            }
 
         # --- STAGE 2: Preprocessing (OpenCV) ---
         t2 = time.perf_counter()
         enhanced_gray, binarized = preprocess_plate(cropped_plate)
+        
+        # Also create HSRP-trimmed variants (trimming left ~10% where the blue IND stripe and hologram reside)
+        h, w = cropped_plate.shape[:2]
+        ocr_images = [cropped_plate, enhanced_gray, binarized]
+        if w > 80:
+            hsrp_trimmed = cropped_plate[:, int(w * 0.10):]
+            enhanced_trimmed, _ = preprocess_plate(hsrp_trimmed)
+            ocr_images.extend([hsrp_trimmed, enhanced_trimmed])
+
         t_prep = (time.perf_counter() - t2) * 1000
         telemetry_stages.append({
             "name": "OpenCV Deskewing & Threshold",
@@ -130,7 +162,7 @@ class ANPRService:
 
         # --- STAGE 3: Character Recognition (EasyOCR) ---
         t3 = time.perf_counter()
-        raw_ocr_text, ocr_conf = self.run_ocr([cropped_plate, enhanced_gray, binarized])
+        raw_ocr_text, ocr_conf = self.run_ocr(ocr_images, known_plates)
         t_ocr = (time.perf_counter() - t3) * 1000
         telemetry_stages.append({
             "name": "EasyOCR Character Extraction",
@@ -156,12 +188,26 @@ class ANPRService:
 
         combined_confidence = round(float((det_conf * 0.4 + ocr_conf * 0.4 + conf_mod * 0.2)), 3)
 
+        if not is_valid or not final_plate:
+            return {
+                "detected": False,
+                "registration_number": "",
+                "raw_ocr": raw_ocr_text,
+                "confidence": 0.0,
+                "is_valid_format": False,
+                "bounding_box": list(bbox) if bbox else None,
+                "execution_time_ms": total_time_ms,
+                "plate_image_base64": plate_b64,
+                "pipeline_stages": telemetry_stages,
+                "message": "Recognized text does not conform to valid Indian vehicle registration format."
+            }
+
         return {
-            "detected": bool(final_plate),
+            "detected": True,
             "registration_number": final_plate,
             "raw_ocr": raw_ocr_text,
-            "confidence": min(0.99, max(0.50, combined_confidence)),
-            "is_valid_format": is_valid,
+            "confidence": min(0.99, max(0.60, combined_confidence)),
+            "is_valid_format": True,
             "bounding_box": list(bbox),
             "execution_time_ms": total_time_ms,
             "plate_image_base64": plate_b64,

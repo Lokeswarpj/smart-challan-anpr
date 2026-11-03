@@ -1,5 +1,4 @@
 import apiClient from './apiClient';
-import { MOCK_VEHICLES } from '../mocks/vehicles';
 
 export const anprService = {
   async detectPlate(imageFile) {
@@ -14,24 +13,20 @@ export const anprService = {
       });
       return { ...response.data, is_mock: false };
     } catch (err) {
-      // Realistic Mock Demonstration Pipeline
-      await new Promise((resolve) => setTimeout(resolve, 1400));
-      
-      // Pick a random plate from the mock collection (or deterministic based on filename if possible)
-      const sample = MOCK_VEHICLES[Math.floor(Math.random() * MOCK_VEHICLES.length)];
-      
+      console.warn("[ANPR] Live vision pipeline call issue:", err);
       return {
-        detected: true,
-        registration_number: sample.registration_number,
-        confidence: 0.964,
+        detected: false,
+        registration_number: "",
+        confidence: 0.0,
         processing_stages: [
-          { name: "Plate Localization (YOLOv8)", status: "completed", time: "18ms" },
-          { name: "OpenCV Deskewing & Threshold", status: "completed", time: "32ms" },
-          { name: "EasyOCR Character Extraction", status: "completed", time: "145ms" },
-          { name: "Indian Plate Regex Correction", status: "completed", time: "2ms" }
+          { name: "Plate Localization (YOLOv8)", status: "failed", time: "--" },
+          { name: "OpenCV Deskewing & Threshold", status: "skipped", time: "--" },
+          { name: "EasyOCR Character Extraction", status: "skipped", time: "--" },
+          { name: "Indian Plate Regex Correction", status: "skipped", time: "--" }
         ],
-        bounding_box: { x1: 140, y1: 210, x2: 480, y2: 310 },
-        is_mock: true
+        bounding_box: null,
+        error: err.response?.data?.detail || "No valid license plate detected in image.",
+        is_mock: false
       };
     }
   }

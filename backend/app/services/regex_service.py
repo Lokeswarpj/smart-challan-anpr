@@ -1,7 +1,7 @@
 """
 Indian License Plate Format Validation and Optical Error Correction
-Part of: Vehicle Document Verification System using ANPR (Phase 2)
-Implements regex validation, positional heuristic correction, and fuzzy string matching.
+Part of: Vehicle Document Verification System using ANPR (Phase 2 & 3)
+Implements regex validation, positional heuristic correction, HSRP stripe artifact removal, and fuzzy string matching.
 """
 
 import re
@@ -17,7 +17,7 @@ INDIAN_STATE_CODES = [
 ]
 
 # Standard Regex Formats
-# 1. Standard Indian State Series: e.g. KA01AB1234, DL04C5678, KA03M1234
+# 1. Standard Indian State Series: e.g. KA01AB1234, HR26DQ5551, DL04C5678
 STANDARD_PLATE_REGEX = re.compile(r'^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4}$')
 
 # 2. Bharat (BH) Series: e.g. 22BH1234AA, 23BH5678B
@@ -26,7 +26,7 @@ BHARAT_SERIES_REGEX = re.compile(r'^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$')
 # Common Optical Misread Substitution Tables
 LETTER_TO_DIGIT = {
     'O': '0', 'D': '0', 'Q': '0',
-    'I': '1', 'L': '1', 'T': '1',
+    'I': '1', 'L': '1', 'T': '1', 'J': '1',
     'Z': '2',
     'E': '3',
     'A': '4',
@@ -36,7 +36,7 @@ LETTER_TO_DIGIT = {
 }
 
 DIGIT_TO_LETTER = {
-    '0': 'O',
+    '0': 'Q',  # Under CMVR / MoRTH rules, 'O' is prohibited in series; 0/O is misread for Q or D
     '1': 'I',
     '2': 'Z',
     '3': 'E',
@@ -46,26 +46,92 @@ DIGIT_TO_LETTER = {
     '8': 'B'
 }
 
+def extract_true_plate_start(text: str) -> str:
+    """
+    Scans for the true Indian State Code or Bharat Series prefix,
+    stripping leading noise caused by the blue HSRP left stripe, Ashoka Chakra, or border glare.
+    Example: 'HHR26DO555J' -> 'HR26DO555J'
+             'CHR26DO555J' -> 'HR26DO555J'
+             'MHR26005551' -> 'HR26005551'
+             'INDHR26DQ5551' -> 'HR26DQ5551'
+    """
+    if not text or len(text) < 8:
+        return text
+
+    best_match = None
+    best_priority = -1
+
+    # 1. Search for Indian State Code followed by true district digits
+    for st in INDIAN_STATE_CODES:
+        start_search = 0
+        while True:
+            idx = text.find(st, start_search)
+            if idx == -1:
+                break
+            remaining = text[idx:]
+            if 8 <= len(remaining) <= 12:
+                c1 = remaining[2] if len(remaining) > 2 else ''
+                c2 = remaining[3] if len(remaining) > 3 else ''
+                priority = 0
+                if c1.isdigit() and c2.isdigit():
+                    priority = 10  # State + 2 true digits (e.g. HR26, KA01)
+                elif c1.isdigit():
+                    priority = 8   # State + 1 true digit (e.g. DL1)
+                elif c1 in '0123456789ODIZ' and c2 in '0123456789ODIZ':
+                    priority = 5   # Digit-like characters
+                elif c1 in '0123456789ODIZ':
+                    priority = 3
+                
+                if priority > best_priority:
+                    best_priority = priority
+                    best_match = remaining
+            start_search = idx + 1
+
+    if best_match and best_priority >= 5:
+        return best_match
+
+    # 2. Check for Bharat (BH) Series e.g. '22BH...', 'X22BH...'
+    bh_idx = text.find("BH")
+    if bh_idx >= 2:
+        year_cand = text[bh_idx - 2:bh_idx]
+        if year_cand.isdigit() or all(c in "0123456789ODIZ" for c in year_cand):
+            remaining = text[bh_idx - 2:]
+            if 8 <= len(remaining) <= 11:
+                return remaining
+
+    return best_match if best_match else text
+
 def clean_ocr_text(raw_text: str) -> str:
     """
     Cleans raw OCR string:
-    - Removes whitespace, dashes, dots, underscores
+    - Removes whitespace, dashes, dots, underscores, special characters
     - Converts to uppercase
-    - Removes common watermarks like 'IND', 'INDIA' often stamped on high-security plates
+    - Strips 'IND' / 'INDIA' watermarks and leading HSRP border noise
+    - Strips trailing frame screws, rivets, or watermark noise (e.g. trailing 'N', 'M', ']')
     """
     if not raw_text:
         return ""
     text = re.sub(r'[^A-Za-z0-9]', '', raw_text).upper()
     
-    # Strip leading or trailing 'IND' / 'INDIA' often stamped on high-security plates
+    # Strip standalone or prefixed 'IND' / 'INDIA'
     if text.startswith('IND') and len(text) > 8:
-        candidate = text[3:]
-        if any(candidate.startswith(st) for st in INDIAN_STATE_CODES) or (len(candidate) >= 8 and candidate[:2].isdigit()):
-            text = candidate
+        text = text[3:]
+    elif text.startswith('INDIA') and len(text) > 10:
+        text = text[5:]
+
     if text.endswith('IND') and len(text) > 8:
         text = text[:-3]
     elif text.endswith('INDIA') and len(text) > 10:
         text = text[:-5]
+
+    # Strip any trailing letter noise following a 4-digit sequence (e.g. screws, frame borders, watermarks: '0002N' -> '0002')
+    text = re.sub(r'([0-9]{4})[A-Za-z]+$', r'\1', text)
+
+    # Strip any leading HSRP border noise before the true state code
+    text = extract_true_plate_start(text)
+
+    # Re-check trailing noise after stripping start
+    text = re.sub(r'([0-9]{4})[A-Za-z]+$', r'\1', text)
             
     return text
 
@@ -78,15 +144,16 @@ def is_valid_plate(plate: str) -> bool:
 def correct_positional_errors(text: str) -> str:
     """
     Applies contextual character substitution based on standard Indian plate anatomy:
-    [0:2]   State code -> Must be Letters
-    [2:4]   District code -> Must be Digits
-    [4:-4]  Series -> Must be Letters
+    [0:2]   State code -> Must be Letters (from INDIAN_STATE_CODES)
+    [2:4]   District code -> Must be Digits (01 to 99)
+    [4:-4]  Series -> Must be Letters (No 'O' or 'I' per CMVR rules)
     [-4:]   Registration number -> Must be Digits
     """
+    text = extract_true_plate_start(text)
     if len(text) < 8 or len(text) > 11:
         return text
 
-    # Check if Bharat Series candidate: starts with 2 digits or digit-letter like '22BH'
+    # Check if Bharat Series candidate
     if text[2:4] == 'BH' or (len(text) >= 9 and text[0:2].isdigit() and ('B' in text[2:4] or 'H' in text[2:4])):
         chars = list(text)
         # Pos 0-1: Digits (Year)
@@ -121,22 +188,49 @@ def correct_positional_errors(text: str) -> str:
             chars[1] = match[1]
 
     # 2. District Code (Index 2, 3 or Index 2): Must be digits
-    chars[2] = LETTER_TO_DIGIT.get(chars[2], chars[2])
+    # Handle single digit district vs 2-digit district
     if len(chars) >= 9 and chars[3].isalpha() and chars[4].isalpha() and "".join(chars[-4:]).isdigit():
         # Single digit district e.g. DL1C1234
-        pass
-    elif len(chars) >= 9:
-        chars[3] = LETTER_TO_DIGIT.get(chars[3], chars[3])
+        chars[2] = LETTER_TO_DIGIT.get(chars[2], chars[2])
+    elif len(chars) >= 8:
+        # Standard 2-digit district
+        # First digit (Index 2)
+        if chars[2] in '1ILTJ|':
+            chars[2] = '1'
+        else:
+            chars[2] = LETTER_TO_DIGIT.get(chars[2], chars[2])
+        
+        # Second digit (Index 3)
+        c3 = chars[3]
+        if chars[2] == '1' and c3 in ['G', 'A', 'H', 'L']:
+            # Highly prevalent OCR misread for '4' (open top or L-bracket with crossbar e.g. RJ14 Jaipur, HR14, DL14, UP14)
+            chars[3] = '4'
+        elif chars[2] == '1' and c3 in ['Z']:
+            chars[3] = '2'
+        elif chars[2] == '1' and c3 in ['S']:
+            chars[3] = '5'
+        elif chars[2] == '1' and c3 in ['B']:
+            chars[3] = '8'
+        elif c3 in ['G']:
+            chars[3] = '4' if chars[2] in '123' else '6'
+        elif c3 in '1ILTJ|':
+            chars[3] = '1'
+        else:
+            chars[3] = LETTER_TO_DIGIT.get(c3, c3)
 
     # 3. Last 4 characters: Must be digits
     for i in range(len(chars) - 4, len(chars)):
         chars[i] = LETTER_TO_DIGIT.get(chars[i], chars[i])
 
     # 4. Intermediate series: Must be letters
+    # In Indian registration series, 'O' is not permitted by CMVR / MoRTH rules. It is always 'Q' or 'D'.
     start_series = 3 if (len(chars) >= 9 and not chars[3].isdigit()) else 4
     end_series = len(chars) - 4
     for i in range(start_series, end_series):
-        chars[i] = DIGIT_TO_LETTER.get(chars[i], chars[i])
+        if chars[i].isdigit():
+            chars[i] = 'Q' if chars[i] == '0' else DIGIT_TO_LETTER.get(chars[i], chars[i])
+        elif chars[i] == 'O':
+            chars[i] = 'Q'
 
     corrected = "".join(chars)
     return corrected
@@ -152,7 +246,6 @@ def fuzzy_match_against_database(candidate: str, known_plates: List[str], max_di
     result = process.extractOne(candidate, known_plates, scorer=fuzz.ratio)
     if result:
         match, score, _ = result
-        # Score 80+ typically corresponds to 1 or 2 character edits in a 10-char string
         if score >= 80:
             return match
             
@@ -171,19 +264,30 @@ def process_and_correct_plate(raw_ocr_text: str, known_plates: Optional[List[str
     if not cleaned:
         return "", False, 0.0
 
-    # If already fully valid
-    if is_valid_plate(cleaned):
+    # If already fully valid and in database
+    if known_plates and cleaned in known_plates:
         return cleaned, True, 1.0
 
-    # Apply positional corrections (e.g. O -> 0 or 8 -> B)
+    # Apply positional corrections (e.g. O -> 0, J -> 1, or series O -> Q)
     corrected = correct_positional_errors(cleaned)
-    if is_valid_plate(corrected):
-        return corrected, True, 0.95
+    
+    # Priority 1: Exact match with registered database vehicle
+    if known_plates and corrected in known_plates:
+        return corrected, True, 1.0
 
-    # Fallback to database known plates if provided
+    # Priority 2: Fuzzy match against registered database vehicle (Levenshtein distance <= 2, e.g. V vs Y optical misread)
     if known_plates:
         db_match = fuzzy_match_against_database(corrected, known_plates)
         if db_match:
-            return db_match, True, 0.88
+            return db_match, True, 0.96
 
-    return corrected, False, 0.50
+    # Priority 3: Conforms to standard Indian or Bharat series regex
+    if is_valid_plate(corrected):
+        return corrected, True, 0.95
+
+    # If already valid without positional change
+    if is_valid_plate(cleaned):
+        return cleaned, True, 1.0
+
+    # If not a valid Indian plate format, reject it cleanly
+    return "", False, 0.0

@@ -217,32 +217,60 @@ export default function ANPRScanner() {
 
         {/* Right Column: AI Pipeline Stage Monitor & Detection Result (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
-          {/* Prominent Charcoal Result Card with Yellow Accents (Section 12 requirement) */}
+          {/* Prominent Charcoal Result Card with Yellow Accents or No Plate Warning */}
           {result && (
-            <div className="bg-primary text-white border-2 border-primary shadow-brutal p-6 relative overflow-hidden">
-              <div className="inline-block bg-accent text-primary px-2.5 py-0.5 text-[10px] font-mono font-black uppercase mb-3">
-                ANPR DETECTION SUCCEEDED
-              </div>
+            result.detected && result.registration_number ? (
+              <div className="bg-primary text-white border-2 border-primary shadow-brutal p-6 relative overflow-hidden">
+                <div className="inline-block bg-accent text-primary px-2.5 py-0.5 text-[10px] font-mono font-black uppercase mb-3">
+                  ANPR DETECTION SUCCEEDED
+                </div>
 
-              <div className="text-xs font-mono text-sage uppercase">EXTRACTED REGISTRATION PLATE</div>
-              <div className="font-heading text-4xl sm:text-5xl text-accent font-mono tracking-widest my-2">
-                {result.registration_number}
-              </div>
+                <div className="text-xs font-mono text-sage uppercase">EXTRACTED REGISTRATION PLATE</div>
+                <div className="font-heading text-4xl sm:text-5xl text-accent font-mono tracking-widest my-2">
+                  {result.registration_number}
+                </div>
 
-              <div className="flex items-center justify-between text-xs font-mono text-sage border-t border-gray-800 pt-3 mb-6">
-                <span>MODEL CONFIDENCE:</span>
-                <strong className="text-white">{(result.confidence * 100).toFixed(1)}%</strong>
-              </div>
+                <div className="flex items-center justify-between text-xs font-mono text-sage border-t border-gray-800 pt-3 mb-6">
+                  <span>MODEL CONFIDENCE:</span>
+                  <strong className="text-white">{(result.confidence * 100).toFixed(1)}%</strong>
+                </div>
 
-              <Button
-                onClick={() => navigate(`/vehicle-verification?reg=${result.registration_number}`)}
-                variant="accent"
-                size="md"
-                className="w-full font-black text-sm"
-              >
-                OPEN COMPLETE VERIFICATION <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
+                <Button
+                  onClick={() => navigate(`/vehicle-verification?reg=${result.registration_number}`)}
+                  variant="accent"
+                  size="md"
+                  className="w-full font-black text-sm"
+                >
+                  OPEN COMPLETE VERIFICATION <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-surface border-2 border-red-500 shadow-brutal p-6 relative overflow-hidden">
+                <div className="inline-block bg-red-500 text-white px-2.5 py-0.5 text-[10px] font-mono font-black uppercase mb-3">
+                  NO LICENSE PLATE DETECTED
+                </div>
+
+                <div className="text-xs font-mono text-red-500 uppercase font-bold">STATUS: ZERO PLATE CANDIDATES</div>
+                <div className="font-heading text-2xl text-primary dark:text-white my-2">
+                  NO VALID REGISTRATION PLATE FOUND
+                </div>
+
+                <p className="text-xs text-sage font-sans mb-4 leading-relaxed">
+                  The optical neural vision pipeline could not identify a valid Indian vehicle registration plate in this image.
+                </p>
+
+                <div className="p-3 bg-gray-50 dark:bg-surface-dark border border-dashed border-gray-300 dark:border-gray-700 text-[11px] font-mono text-sage space-y-1 mb-4">
+                  <div>• Ensure the front or rear number plate is clearly visible.</div>
+                  <div>• Check that the plate is not obstructed, tilted, or blurry.</div>
+                  <div>• Avoid uploading personal photos or non-vehicle scenes.</div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs font-mono text-sage border-t border-gray-200 dark:border-gray-800 pt-3">
+                  <span>DETECTION CONFIDENCE:</span>
+                  <strong className="text-red-500">0.0%</strong>
+                </div>
+              </div>
+            )
           )}
 
           {/* AI Pipeline Stages Tracker */}

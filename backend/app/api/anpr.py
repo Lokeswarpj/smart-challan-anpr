@@ -34,8 +34,14 @@ async def detect_license_plate(
             detail="Failed to decode uploaded image data."
         )
 
+    # Query known registration plates for fuzzy matching assistance
+    try:
+        known_plates = [v[0] for v in db.query(Vehicle.registration_number).all()]
+    except Exception:
+        known_plates = None
+
     # Process image through our multi-stage pipeline
-    result = anpr_service.process_image(image_bgr)
+    result = anpr_service.process_image(image_bgr, known_plates=known_plates)
 
     # Map pipeline processing stages
     raw_stages = result.get("pipeline_stages", [])
@@ -62,7 +68,7 @@ async def detect_license_plate(
 
     # Check database for matching vehicle record
     matched_vehicle = None
-    if plate_number:
+    if detected and plate_number:
         clean_plate = plate_number.replace(" ", "").replace("-", "").upper()
         veh = db.query(Vehicle).filter(Vehicle.registration_number == clean_plate).first()
         if veh:
@@ -85,11 +91,11 @@ async def detect_license_plate(
 
     return ANPRDetectResponse(
         detected=detected,
-        registration_number=plate_number,
-        confidence=confidence,
+        registration_number=plate_number if detected else "",
+        confidence=confidence if detected else 0.0,
         processing_stages=stages,
-        bounding_box=bbox,
-        plate_crop_base64=result.get("plate_image_base64") or result.get("plate_crop_base64"),
+        bounding_box=bbox if detected else None,
+        plate_crop_base64=result.get("plate_image_base64") or result.get("plate_crop_base64") if detected else None,
         vehicle=matched_vehicle,
         is_mock=False
     )
