@@ -52,7 +52,7 @@ class PlateDetector:
         
         best_crop = None
         best_box = (0, 0, w, h)
-        best_conf = 0.50
+        best_conf = 0.0
 
         # Check detected objects
         if len(boxes) > 0:
@@ -67,9 +67,10 @@ class PlateDetector:
                 
                 # Check if trained custom class for license plate (usually class 0 or 'LicensePlate')
                 cls_name = self.model.names.get(cls_id, "")
-                if ("plate" in cls_name.lower() or cls_id == 0) and conf >= 0.35:
-                    # Validate horizontal aspect ratio for standard plates (typically 2.0 to 6.0)
-                    if 1.8 <= box_aspect <= 6.5 and conf > best_conf:
+                if ("plate" in cls_name.lower() or cls_id == 0) and conf >= 0.25:
+                    # Validate aspect ratio:
+                    # Rectangular plates (2.0 to 6.5) and Two-line / square motorcycle plates (1.1 to 2.0)
+                    if 1.1 <= box_aspect <= 6.5 and conf > best_conf:
                         best_conf = conf
                         best_box = (x1, y1, x2, y2)
                         # Add slight 5% margin around the plate

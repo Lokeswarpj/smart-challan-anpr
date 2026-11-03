@@ -124,14 +124,14 @@ def clean_ocr_text(raw_text: str) -> str:
     elif text.endswith('INDIA') and len(text) > 10:
         text = text[:-5]
 
-    # Strip any trailing letter noise following a 4-digit sequence (e.g. screws, frame borders, watermarks: '0002N' -> '0002')
-    text = re.sub(r'([0-9]{4})[A-Za-z]+$', r'\1', text)
-
-    # Strip any leading HSRP border noise before the true state code
+    # Strip any leading HSRP border noise before the true state code or BH series
     text = extract_true_plate_start(text)
 
-    # Re-check trailing noise after stripping start
-    text = re.sub(r'([0-9]{4})[A-Za-z]+$', r'\1', text)
+    # Bharat series plates (e.g. 22BH1234AA) end with 1 or 2 letters after 4 digits.
+    # Only standard state series (e.g. KA01AB1234) should strip trailing letter noise like screws.
+    is_bh_candidate = bool(re.search(r'^[0-9OIZ]{2}(?:BH|8H)', text))
+    if not is_bh_candidate:
+        text = re.sub(r'([0-9]{4})[A-Za-z]+$', r'\1', text)
             
     return text
 
@@ -139,7 +139,11 @@ def is_valid_plate(plate: str) -> bool:
     """Checks whether the plate string conforms to standard Indian or BH series format."""
     if not plate:
         return False
-    return bool(STANDARD_PLATE_REGEX.match(plate) or BHARAT_SERIES_REGEX.match(plate))
+    if BHARAT_SERIES_REGEX.match(plate):
+        return True
+    if STANDARD_PLATE_REGEX.match(plate):
+        return plate[:2] in INDIAN_STATE_CODES
+    return False
 
 def correct_positional_errors(text: str) -> str:
     """
@@ -153,8 +157,16 @@ def correct_positional_errors(text: str) -> str:
     if len(text) < 8 or len(text) > 11:
         return text
 
-    # Check if Bharat Series candidate
-    if text[2:4] == 'BH' or (len(text) >= 9 and text[0:2].isdigit() and ('B' in text[2:4] or 'H' in text[2:4])):
+    # Check if Bharat Series candidate (e.g. 22BH9988AA or optical misread ZZ8H9988AA)
+    bh_pattern = text[2:4] in ['BH', '8H', '8A', 'BA', '3H']
+    is_bh_cand = False
+    if len(text) >= 8:
+        if bh_pattern:
+            is_bh_cand = True
+        elif len(text) >= 9 and any(c in '0123456789ODIZ' for c in text[0:2]) and ('B' in text[2:4] or 'H' in text[2:4]):
+            is_bh_cand = True
+
+    if is_bh_cand:
         chars = list(text)
         # Pos 0-1: Digits (Year)
         chars[0] = LETTER_TO_DIGIT.get(chars[0], chars[0])
@@ -179,13 +191,42 @@ def correct_positional_errors(text: str) -> str:
     chars[0] = DIGIT_TO_LETTER.get(chars[0], chars[0])
     chars[1] = DIGIT_TO_LETTER.get(chars[1], chars[1])
     
-    # Check if state code matches known state; if close, correct it
+    # Check if state code matches known state; if invalid, apply optical substitution
     state_candidate = "".join(chars[:2])
     if state_candidate not in INDIAN_STATE_CODES:
-        match, score, _ = process.extractOne(state_candidate, INDIAN_STATE_CODES, scorer=fuzz.ratio)
-        if score >= 60:
-            chars[0] = match[0]
-            chars[1] = match[1]
+        c0, c1 = chars[0], chars[1]
+        if c1 == 'B':
+            # In India, only WB (West Bengal) and PB (Punjab) end with 'B'
+            chars[0] = 'PB' if c0 in ['P', 'R', 'F', 'D', 'B'] else 'WB'
+        elif c1 == 'R':
+            # BR, HR, AR, TR
+            chars[0] = 'BR' if c0 in ['B', '8'] else ('AR' if c0 == 'A' else 'HR')
+        elif c1 == 'L':
+            # DL, KL, ML, NL
+            chars[0] = 'DL' if c0 in ['D', '0', 'O', 'Q', 'U'] else ('KL' if c0 in ['K', 'X'] else 'DL')
+        elif c1 == 'H':
+            # MH, CH, JH
+            chars[0] = 'MH' if c0 in ['M', 'N', 'W', 'H'] else 'CH'
+        elif c1 == 'J':
+            # GJ, RJ
+            chars[0] = 'RJ' if c0 in ['R', 'P', 'B'] else 'GJ'
+        elif c1 == 'A':
+            # KA, GA, LA
+            chars[0] = 'KA' if c0 in ['K', 'X', 'H', 'N'] else 'GA'
+        elif c1 == 'P':
+            # UP, MP, AP, HP
+            chars[0] = 'UP' if c0 in ['U', 'V', '0', 'O'] else ('MP' if c0 in ['M', 'N', 'W'] else 'AP')
+        elif c1 == 'N':
+            # TN, DN, MN, AN
+            chars[0] = 'TN' if c0 in ['T', 'I', '1', '7', 'J'] else 'DN'
+        elif c1 == 'D':
+            # OD, DD, LD
+            chars[0] = 'OD' if c0 in ['0', 'O', 'Q', 'C', 'D'] else 'DD'
+        else:
+            match, score, _ = process.extractOne(state_candidate, INDIAN_STATE_CODES, scorer=fuzz.ratio)
+            if score >= 50:
+                chars[0] = match[0]
+                chars[1] = match[1]
 
     # 2. District Code (Index 2, 3 or Index 2): Must be digits
     # Handle single digit district vs 2-digit district
