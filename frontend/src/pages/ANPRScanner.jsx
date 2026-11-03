@@ -45,11 +45,11 @@ export default function ANPRScanner() {
   }, [result]);
 
   const pipelineStages = [
-    { id: 1, name: "Plate Localization (YOLOv8)", desc: "Locates bounding box coordinates of number plate." },
-    { id: 2, name: "OpenCV Deskewing & Threshold", desc: "Corrects perspective slant and optimizes contrast." },
-    { id: 3, name: "Character Recognition (EasyOCR)", desc: "Reads alphanumeric character sequences." },
-    { id: 4, name: "Indian Plate Regex Correction", desc: "Fuzzy substitution fixes optical misreads (O vs 0)." },
-    { id: 5, name: "Database Verification (FastAPI)", desc: "Retrieves complete vehicle & compliance records." }
+    { id: 1, name: "Plate Localization (YOLOv8)", desc: "Locates bounding box coordinates of number plate.", statusText: "01/05: YOLOv8 LOCALIZING NUMBER PLATE..." },
+    { id: 2, name: "OpenCV Deskewing & Threshold", desc: "Corrects perspective slant and optimizes contrast.", statusText: "02/05: OPENCV DESKEWING & ENHANCEMENT..." },
+    { id: 3, name: "Character Recognition (EasyOCR)", desc: "Reads alphanumeric character sequences.", statusText: "03/05: EASYOCR EXTRACTING CHARACTERS..." },
+    { id: 4, name: "Indian Plate Regex Correction", desc: "Fuzzy substitution fixes optical misreads (O vs 0).", statusText: "04/05: CMVR REGEX CORRECTION & FUZZY REPAIR..." },
+    { id: 5, name: "Database Verification (FastAPI)", desc: "Retrieves complete vehicle & compliance records.", statusText: "05/05: FASTAPI DATABASE VERIFICATION..." }
   ];
 
   useEffect(() => {
@@ -183,13 +183,13 @@ export default function ANPRScanner() {
                     className="max-h-[440px] max-w-full object-contain block border border-primary/20"
                   />
 
-                  {/* Scanning Laser Beam (Active only while YOLO is localizing) */}
+                  {/* Scanning Laser Beam & Dynamic Stage Status */}
                   {processing && (
                     <div className="absolute inset-0 pointer-events-none overflow-hidden bg-accent/5 backdrop-blur-[0.5px]">
                       <div className="animate-scan-sweep bg-accent shadow-[0_0_15px_#FFE17C]"></div>
                       <div className="absolute bottom-2 left-2 right-2 text-center">
                         <span className="inline-block bg-primary text-accent text-[10px] font-mono font-black px-2.5 py-1 border border-accent uppercase tracking-widest shadow-brutal-sm animate-pulse">
-                          YOLOv8 DETECTING NUMBER PLATE...
+                          {pipelineStages.find((s) => s.id === activeStep)?.statusText || "PROCESSING PIPELINE..."}
                         </span>
                       </div>
                     </div>
