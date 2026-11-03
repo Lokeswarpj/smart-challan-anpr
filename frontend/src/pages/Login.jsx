@@ -104,13 +104,20 @@ export default function Login() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
+          {/* Hidden dummy fields to prevent Chrome/Edge from auto-populating saved email credentials */}
+          <input type="text" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" />
+          <input type="password" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" />
+
           <Input
             label="Officer Badge ID / Username"
-            placeholder="e.g. KA-POL-1001"
+            placeholder="e.g. KA-POL-2026"
             value={badgeNumber}
             onChange={(e) => setBadgeNumber(e.target.value)}
             icon={User}
+            autoComplete="off"
+            name="officer_badge_number_field"
+            id="officer_badge_number_field"
             autoFocus
           />
 
@@ -122,6 +129,9 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               icon={Lock}
+              autoComplete="new-password"
+              name="officer_security_pin_field"
+              id="officer_security_pin_field"
             />
             <button
               type="button"
@@ -161,7 +171,15 @@ export default function Login() {
           <div className="text-[11px] font-mono text-secondary font-bold uppercase mb-3 text-center">
             DEMONSTRATION QUICK-FILLS:
           </div>
-          <div className="grid grid-cols-2 gap-2 text-xs font-sans">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-sans">
+            <button
+              type="button"
+              onClick={() => autofillDemo('KA-POL-2026', 'police2026')}
+              className="p-2 border-2 border-primary bg-accent hover:bg-yellow-300 text-left transition-colors font-mono shadow-brutal-sm"
+            >
+              <div className="font-bold text-primary">KA-POL-2026</div>
+              <div className="text-[10px] text-primary/80 font-semibold">Insp. Lokeshwar (Clean)</div>
+            </button>
             <button
               type="button"
               onClick={() => autofillDemo('KA-POL-1001', 'officer123')}

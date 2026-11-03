@@ -86,3 +86,13 @@
   transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Override aggressive browser autofill blue/yellow styling */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px white inset !important;
+  -webkit-text-fill-color: #171E19 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
