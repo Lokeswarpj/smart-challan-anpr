@@ -2,7 +2,8 @@
 
 > **Tagline:** VERIFY SMARTER. ENFORCE FASTER.  
 > **Academic Context:** Mini Project (2 Credits) — B.Tech, Artificial Intelligence & Machine Learning (Semester V)  
-> **Repository:** [https://github.com/Lokeswarpj/smart-challan-anpr](https://github.com/Lokeswarpj/smart-challan-anpr)
+> **Repository:** [https://github.com/Lokeswarpj/smart-challan-anpr](https://github.com/Lokeswarpj/smart-challan-anpr)  
+> 📖 **TEAM & EXAMINER MASTER GUIDE:** For complete feature walkthroughs, architecture diagrams, database models, and the **top 20 professor viva questions with model answers**, open **[`PROJECT_EXPLAINER.md`](./PROJECT_EXPLAINER.md)**!
 
 ---
 
