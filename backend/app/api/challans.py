@@ -122,10 +122,8 @@ def create_challan(
     )
 
     db.add(challan)
-    db.commit()
-    db.refresh(challan)
-
-    # Log Audit
+    
+    # Log Audit in single atomic transaction
     try:
         audit = AuditLog(
             officer_id=officer.id,
@@ -133,13 +131,14 @@ def create_challan(
             action="issue_challan",
             registration_queried=clean_plate,
             timestamp=datetime.utcnow(),
-            details=f"Challan {challan.challan_number} issued for ₹{challan.fine_amount:.2f} ({violation_title})."
+            details=f"Challan {challan.challan_number} issued for INR {challan.fine_amount:.2f} ({violation_title})."
         )
         db.add(audit)
-        db.commit()
     except Exception:
-        db.rollback()
+        pass
 
+    db.commit()
+    db.refresh(challan)
     return build_challan_response(challan)
 
 @router.get("/{challan_id}", response_model=ChallanResponse)
