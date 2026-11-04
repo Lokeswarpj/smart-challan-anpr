@@ -6,6 +6,7 @@ Integrates YOLOv8 Plate Localization, OpenCV Preprocessing, EasyOCR Extraction, 
 
 import time
 import base64
+import re
 import cv2
 import numpy as np
 import easyocr
@@ -13,7 +14,7 @@ import torch
 from typing import Dict, Any, Optional, List, Union, Tuple
 from app.services.anpr_detector import PlateDetector
 from app.services.cv_preprocessor import preprocess_plate
-from app.services.regex_service import process_and_correct_plate
+from app.services.regex_service import process_and_correct_plate, INDIAN_STATE_CODES
 
 class ANPRService:
     _instance = None
@@ -45,13 +46,19 @@ class ANPRService:
 
     def run_ocr(self, preprocessed_images: List[np.ndarray], known_plates: Optional[List[str]] = None) -> Tuple[str, float]:
         """
-        Executes EasyOCR with character whitelist and bounding box sorting.
-        Ranks candidate strings across passes with early exit as soon as a valid Indian plate format is confirmed.
+        Executes EasyOCR with character whitelist, confidence-based noise pruning,
+        two-line / split plate layout reconstruction, and multi-candidate scoring.
         """
         whitelist = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         best_text = ""
         best_score = -1.0
         best_conf = 0.0
+
+        DISCARD_WORDS = {
+            'IND', 'INDIA', 'GOVT', 'POLICE', 'SUZUKI', 'MARUTI', 'HONDA', 
+            'HYUNDAI', 'HERO', 'TOYOTA', 'BAJAJ', 'YAMAHA', 'TVS', 'TATA', 
+            'MAHINDRA', 'MOTORS', 'DEALER', 'SHOWROOM', 'SERVICE', 'AUTOMOBILES'
+        }
 
         for img in preprocessed_images:
             try:
@@ -61,35 +68,112 @@ class ANPRService:
                     paragraph=False,
                     detail=1
                 )
-                
-                # Sort detections horizontally (left-to-right)
-                results_sorted = sorted(results, key=lambda r: (r[0][0][1] // 30, r[0][0][0]))
-                
-                extracted_parts = []
-                confs = []
-                for bbox, text, conf in results_sorted:
-                    clean_piece = text.strip()
-                    # Discard standalone IND and INDIA tags from HSRP stripe
-                    if clean_piece in ['IND', 'INDIA']:
-                        continue
-                    if clean_piece:
-                        extracted_parts.append(clean_piece)
-                        confs.append(conf)
-                        
-                candidate_text = "".join(extracted_parts)
-                avg_conf = float(np.mean(confs)) if confs else 0.0
-                
-                if len(candidate_text) >= 7:
-                    corrected, is_valid, mod = process_and_correct_plate(candidate_text, known_plates)
-                    priority_score = (avg_conf * mod) + (2.0 if is_valid else 0.0)
-                    if priority_score > best_score:
-                        best_score = priority_score
-                        best_text = candidate_text
-                        best_conf = avg_conf
+                if not results:
+                    continue
 
-                    # EARLY EXIT: If this pass yields a valid Indian plate format, stop immediately!
-                    if is_valid and mod >= 0.95:
-                        break
+                # Filter out obvious dealer words, phone numbers, or isolated punctuation
+                valid_detections = []
+                for bbox, text, conf in results:
+                    clean_piece = re.sub(r'[^A-Za-z0-9]', '', text).upper()
+                    if not clean_piece or clean_piece in DISCARD_WORDS:
+                        continue
+                    # Ignore pure phone numbers (7+ digits)
+                    if clean_piece.isdigit() and len(clean_piece) > 5:
+                        continue
+                    valid_detections.append((bbox, clean_piece, float(conf)))
+
+                if not valid_detections:
+                    continue
+
+                # Generate candidates using different strategies:
+                # 1. High-confidence filtered chunks (conf >= 0.20)
+                # 2. All chunks
+                candidate_sets = []
+                high_conf_dets = [d for d in valid_detections if d[2] >= 0.20]
+                if high_conf_dets:
+                    candidate_sets.append(high_conf_dets)
+                candidate_sets.append(valid_detections)
+
+                for det_set in candidate_sets:
+                    # Adaptive Y-band sorting (accounts for varying plate heights)
+                    box_heights = [abs(d[0][2][1] - d[0][0][1]) for d in det_set]
+                    med_h = np.median(box_heights) if box_heights else 25.0
+                    y_band = max(15.0, med_h * 0.7)
+
+                    # Strategy 1: Standard Reading Order (Top-to-Bottom by Y-band, then Left-to-Right by X)
+                    sorted_by_reading_order = sorted(
+                        det_set, 
+                        key=lambda r: (round(r[0][0][1] / y_band), r[0][0][0])
+                    )
+                    cand_str_1 = "".join([d[1] for d in sorted_by_reading_order])
+
+                    # Strategy 2: Two-Line / Square Plate Column Order (Left column GJ27 / FF, Right column 7002)
+                    sorted_by_columns = sorted(
+                        det_set,
+                        key=lambda r: (round(r[0][0][0] / max(40.0, med_h * 2.0)), r[0][0][1])
+                    )
+                    cand_str_2 = "".join([d[1] for d in sorted_by_columns])
+
+                    candidates_to_test = [cand_str_1]
+                    if cand_str_2 != cand_str_1:
+                        candidates_to_test.append(cand_str_2)
+
+                    # Strategy 3: Structural Syntactic Recombination for 2-line and split plates (Prefix + Series + Suffix)
+                    prefix_c, prefix_conf = "", 0.0
+                    series_c, series_conf = "", 0.0
+                    suffix_c, suffix_conf = "", 0.0
+
+                    for d in det_set:
+                        raw_c = d[1].strip("[]_ -.")
+                        conf_val = float(d[2])
+                        clean = raw_c
+                        for st in INDIAN_STATE_CODES:
+                            st_idx = raw_c.find(st)
+                            if st_idx != -1 and len(raw_c[st_idx:]) >= 3 and raw_c[st_idx+2:st_idx+3].isdigit():
+                                clean = raw_c[st_idx:]
+                                break
+
+                        if any(clean.startswith(st) for st in INDIAN_STATE_CODES):
+                            if conf_val > prefix_conf:
+                                prefix_c = clean
+                                prefix_conf = conf_val
+                        elif clean.isdigit() and 3 <= len(clean) <= 4:
+                            if conf_val > suffix_conf:
+                                suffix_c = clean
+                                suffix_conf = conf_val
+                        elif clean.isalpha() and len(clean) <= 3 and clean not in DISCARD_WORDS:
+                            # Higher confidence series wins (e.g. true series FF with conf 0.87 beats glare CL with conf 0.33)
+                            if conf_val > series_conf:
+                                series_c = clean
+                                series_conf = conf_val
+
+                    if prefix_c and suffix_c:
+                        cand_str_3 = f"{prefix_c}{series_c}{suffix_c}"
+                        if cand_str_3 not in candidates_to_test:
+                            candidates_to_test.insert(0, cand_str_3)
+
+                    avg_conf = float(np.mean([d[2] for d in det_set])) if det_set else 0.0
+
+                    for cand_text in candidates_to_test:
+                        if len(cand_text) >= 7:
+                            corrected, is_valid, mod = process_and_correct_plate(cand_text, known_plates)
+
+                            # Scoring priorities:
+                            # 1. Exact 10-char plate or known DB plate
+                            length_bonus = 1.5 if (len(corrected) == 10 or (len(corrected) == 9 and len(corrected) > 3 and corrected[2].isdigit())) else 0.0
+                            # 2. CMVR compliance (no 'Q' or 'O' in series)
+                            cmvr_bonus = 1.0 if (len(corrected) >= 6 and 'Q' not in corrected[4:6] and 'O' not in corrected[4:6]) else 0.0
+                            
+                            priority_score = (avg_conf * mod) + (3.0 if is_valid else 0.0) + length_bonus + cmvr_bonus
+
+                            if priority_score > best_score:
+                                best_score = priority_score
+                                best_text = cand_text
+                                best_conf = avg_conf
+
+                            # EARLY EXIT: If this pass yields a valid 10-character Indian plate format, stop immediately!
+                            if is_valid and mod >= 0.95 and len(corrected) == 10 and cmvr_bonus > 0:
+                                return best_text, best_conf
             except Exception as e:
                 print(f"[ANPRService] OCR pass warning: {e}")
 

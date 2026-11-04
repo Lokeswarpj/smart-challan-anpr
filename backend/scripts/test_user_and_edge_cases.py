@@ -19,6 +19,7 @@ def run_comprehensive_plate_suite():
         ("Private White Plate (Rajasthan)", os.path.join(brain_dir, "media_1793682336686_99158dcd.jpg"), "RJ14CV0002", True),
         ("Commercial Yellow Plate (UP)", os.path.join(brain_dir, "media_1793685575842_63bfaef1.jpg"), "UP32RN5761", True),
         ("Two-Line Split Plate (TN)", os.path.join(brain_dir, "media_1793686088656_5c9a4254.jpg"), "TN23F9023", True),
+        ("Two-Line Split Plate (Gujarat)", os.path.join(os.path.dirname(__file__), "sample_two_line_plate.jpg"), "GJ27FF7002", True),
         ("Negative Rejection (Selfie)", os.path.join(brain_dir, "media_1793682331025_ef7dbb23.jpg"), "", False),
         ("Synthetic Standard (KA)", None, "KA01AB1234", True),
         ("Synthetic Standard (DL)", None, "DL04CC9999", True),

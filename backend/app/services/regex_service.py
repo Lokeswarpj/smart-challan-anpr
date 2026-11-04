@@ -17,8 +17,9 @@ INDIAN_STATE_CODES = [
 ]
 
 # Standard Regex Formats
-# 1. Standard Indian State Series: e.g. KA01AB1234, HR26DQ5551, DL04C5678
-STANDARD_PLATE_REGEX = re.compile(r'^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4}$')
+# 1. Standard Indian State Series: e.g. KA01AB1234, HR26DQ5551, DL04C5678 (Max 2 series letters per CMVR)
+STANDARD_PLATE_REGEX = re.compile(r'^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$')
+LEGACY_PLATE_REGEX = re.compile(r'^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4}$')
 
 # 2. Bharat (BH) Series: e.g. 22BH1234AA, 23BH5678B
 BHARAT_SERIES_REGEX = re.compile(r'^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$')
@@ -36,7 +37,7 @@ LETTER_TO_DIGIT = {
 }
 
 DIGIT_TO_LETTER = {
-    '0': 'Q',  # Under CMVR / MoRTH rules, 'O' is prohibited in series; 0/O is misread for Q or D
+    '0': 'D',  # Under CMVR / MoRTH rules, 'O' and 'Q' are prohibited in series; 0 is misread for D
     '1': 'I',
     '2': 'Z',
     '3': 'E',
@@ -264,17 +265,65 @@ def correct_positional_errors(text: str) -> str:
         chars[i] = LETTER_TO_DIGIT.get(chars[i], chars[i])
 
     # 4. Intermediate series: Must be letters
-    # In Indian registration series, 'O' is not permitted by CMVR / MoRTH rules. It is always 'Q' or 'D'.
+    # Under Central Motor Vehicles Rules (CMVR), 'O' and 'Q' are prohibited in registration series.
     start_series = 3 if (len(chars) >= 9 and not chars[3].isdigit()) else 4
     end_series = len(chars) - 4
     for i in range(start_series, end_series):
         if chars[i].isdigit():
-            chars[i] = 'Q' if chars[i] == '0' else DIGIT_TO_LETTER.get(chars[i], chars[i])
-        elif chars[i] == 'O':
-            chars[i] = 'Q'
+            chars[i] = 'D' if chars[i] == '0' else DIGIT_TO_LETTER.get(chars[i], chars[i])
+        elif chars[i] in ['O', 'Q']:
+            chars[i] = 'D'
 
     corrected = "".join(chars)
     return corrected
+
+def prune_extra_series_characters(text: str, known_plates: Optional[List[str]] = None) -> str:
+    """
+    Intelligently cleans multi-line or reflective plate noise where phone UI, screw rivets,
+    or glare inject extra characters into the registration series.
+    Example: 'GJ27ZQZ7002' -> strips prohibited 'Q'/'O' and extracts true 10-char plate.
+    """
+    if len(text) <= 10:
+        return text
+    state = text[:2]
+    if state not in INDIAN_STATE_CODES:
+        return text
+    if not (text[2:4].isdigit() and text[-4:].isdigit()):
+        return text
+    rto = text[2:4]
+    digits = text[-4:]
+    series = text[4:-4]
+    
+    # Priority: If known plates is available, match exact vehicle
+    if known_plates:
+        for kp in known_plates:
+            if kp.startswith(f"{state}{rto}") and kp.endswith(digits):
+                return kp
+
+    # 1. Strip prohibited CMVR letters ('Q' and 'O')
+    clean_series = series.replace('Q', '').replace('O', '')
+    if len(clean_series) in [1, 2]:
+        cand = f"{state}{rto}{clean_series}{digits}"
+        if is_valid_plate(cand):
+            return cand
+
+    # 2. Try all 2-character sub-slices
+    for i in range(len(series) - 1):
+        s2 = series[i:i+2]
+        if 'Q' not in s2 and 'O' not in s2:
+            cand = f"{state}{rto}{s2}{digits}"
+            if known_plates and cand in known_plates:
+                return cand
+            if is_valid_plate(cand):
+                return cand
+
+    for char in series:
+        if char not in ['Q', 'O']:
+            cand = f"{state}{rto}{char}{digits}"
+            if is_valid_plate(cand):
+                return cand
+
+    return text
 
 def fuzzy_match_against_database(candidate: str, known_plates: List[str], max_distance: int = 2) -> Optional[str]:
     """
@@ -309,8 +358,14 @@ def process_and_correct_plate(raw_ocr_text: str, known_plates: Optional[List[str
     if known_plates and cleaned in known_plates:
         return cleaned, True, 1.0
 
-    # Apply positional corrections (e.g. O -> 0, J -> 1, or series O -> Q)
+    # Apply positional corrections (e.g. O -> 0, J -> 1, or series O -> D)
     corrected = correct_positional_errors(cleaned)
+    
+    # Prune extra noise characters / reflection artifacts in multi-line or glare scenarios
+    if len(corrected) > 10:
+        pruned = prune_extra_series_characters(corrected, known_plates)
+        if is_valid_plate(pruned):
+            corrected = pruned
     
     # Priority 1: Exact match with registered database vehicle
     if known_plates and corrected in known_plates:
