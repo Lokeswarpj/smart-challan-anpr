@@ -13,7 +13,11 @@ import {
   Plus,
   Eye,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Smartphone,
+  Send,
+  Copy,
+  ExternalLink
 } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
 import Button from '../components/common/Button';
@@ -28,6 +32,9 @@ export default function Challans() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedChallan, setSelectedChallan] = useState(null);
   const [dispatchMessage, setDispatchMessage] = useState('');
+  const [showSmsPreview, setShowSmsPreview] = useState(false);
+  const [demoPhone, setDemoPhone] = useState('');
+  const [copySuccess, setCopySuccess] = useState(false);
 
   useEffect(() => {
     challanService.getChallans().then(setChallans);
@@ -56,43 +63,71 @@ export default function Challans() {
     setDispatchMessage(res.message);
     const updated = await challanService.getChallans();
     setChallans(updated);
-    setTimeout(() => setDispatchMessage(''), 3000);
+
+    if (channel === 'sms') {
+      setShowSmsPreview(true);
+    }
+
+    setTimeout(() => setDispatchMessage(''), 4000);
+  };
+
+  const getSmsMessageText = (challan) => {
+    if (!challan) return '';
+    return `GOVT OF INDIA - TRAFFIC POLICE NOTICE\nE-Challan: ${challan.challan_number || challan.id}\nVehicle: ${challan.registration_number}\nOffense: ${challan.violation_title} (${challan.rule_section})\nPenalty: INR ${challan.fine_amount}.00\nDue Date: ${challan.due_date}\nPay & Contest Online: https://echallan.parivahan.gov.in`;
+  };
+
+  const handleCopySms = () => {
+    if (!selectedChallan) return;
+    navigator.clipboard.writeText(getSmsMessageText(selectedChallan));
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2500);
+  };
+
+  const handleSendWhatsApp = () => {
+    if (!selectedChallan) return;
+    const cleanNumber = (demoPhone || selectedChallan.owner_phone || '')
+      .replace(/[^0-9]/g, '')
+      .replace(/^0+/, '');
+    const finalNumber = cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
+    const text = encodeURIComponent(getSmsMessageText(selectedChallan));
+    const url = `https://wa.me/${finalNumber}?text=${text}`;
+    window.open(url, '_blank');
   };
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <PageHeader
-        title="CHALLAN MANAGEMENT"
-        subtitle="Search, filter, inspect digital challans, and issue spot receipts."
+        title="DIGITAL ENFORCEMENT & E-CHALLANS"
+        subtitle="Manage active enforcement challans, monitor collection recovery, and dispatch digital notifications."
         action={
           <Link to="/challans/new">
             <Button variant="accent" size="sm" icon={Plus}>
-              ISSUE NEW CHALLAN
+              CREATE NEW CHALLAN
             </Button>
           </Link>
         }
       />
 
-      {/* Filter and Search Controls */}
-      <div className="bg-white dark:bg-surface border-2 border-primary shadow-brutal p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="w-full md:w-96">
+      {/* Filter and Search Bar */}
+      <div className="bg-white dark:bg-surface border-2 border-primary shadow-brutal p-6 flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="w-full md:w-80">
           <Input
-            placeholder="Search plate, Challan ID, or violation..."
+            placeholder="Search plate, challan ID, rule..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             icon={Search}
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
+        <div className="flex gap-2 overflow-x-auto w-full md:w-auto">
           {['ALL', 'UNPAID', 'PAID', 'DISPUTED'].map((st) => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1.5 text-xs font-bold font-sans uppercase border border-primary transition-colors ${
+              className={`px-4 py-2 font-heading text-xs tracking-wider border-2 border-primary transition-all ${
                 statusFilter === st
                   ? 'bg-accent text-primary font-black shadow-brutal-sm'
-                  : 'bg-surface dark:bg-surface-dark text-secondary hover:text-black'
+                  : 'bg-white dark:bg-surface text-secondary hover:bg-surface'
               }`}
             >
               {st}
@@ -101,52 +136,55 @@ export default function Challans() {
         </div>
       </div>
 
-      {/* Challan Table */}
+      {/* Challans Table */}
       <div className="bg-white dark:bg-surface border-2 border-primary shadow-brutal overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left text-xs font-sans">
           <thead>
-            <tr className="bg-primary text-white border-b-2 border-primary text-xs font-heading tracking-wider">
-              <th className="p-4">CHALLAN ID</th>
-              <th className="p-4">PLATE NUMBER</th>
-              <th className="p-4">VIOLATION TYPE</th>
-              <th className="p-4">FINE (₹)</th>
-              <th className="p-4">DATE & TIME</th>
-              <th className="p-4">STATUS</th>
-              <th className="p-4 text-right">ACTION</th>
+            <tr className="bg-primary text-white border-b-2 border-primary font-heading tracking-wider">
+              <th className="p-3">CHALLAN ID</th>
+              <th className="p-3">REGISTRATION</th>
+              <th className="p-3">VIOLATION / RULE SECTION</th>
+              <th className="p-3">FINE (INR)</th>
+              <th className="p-3">ISSUED AT</th>
+              <th className="p-3">STATUS</th>
+              <th className="p-3">DISPATCH</th>
+              <th className="p-3 text-right">ACTION</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-800 text-xs font-sans">
-            {filteredChallans.map((ch) => (
-              <tr
-                key={ch.id}
-                className="hover:bg-surface/80 dark:hover:bg-surface-dark transition-colors"
-              >
-                <td className="p-4 font-mono font-bold text-primary dark:text-gray-200">
-                  {ch.id}
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+            {filteredChallans.map((c) => (
+              <tr key={c.id} className="hover:bg-surface/80">
+                <td className="p-3 font-mono font-bold text-primary dark:text-accent">
+                  {c.id}
                 </td>
-                <td className="p-4 font-mono font-black text-sm text-primary dark:text-accent">
-                  {ch.registration_number}
+                <td className="p-3 font-mono font-black">{c.registration_number}</td>
+                <td className="p-3">
+                  <div className="font-bold text-primary dark:text-white">{c.violation_title}</div>
+                  <div className="text-[11px] font-mono text-gray-500">{c.rule_section}</div>
                 </td>
-                <td className="p-4 text-secondary dark:text-gray-300 font-medium max-w-xs truncate">
-                  {ch.violation_title}
-                  <div className="text-[10px] text-gray-500 font-mono">{ch.rule_section}</div>
+                <td className="p-3 font-heading font-black text-sm text-danger">
+                  ₹{c.fine_amount}
                 </td>
-                <td className="p-4 font-heading text-sm text-primary dark:text-white font-bold">
-                  ₹{ch.fine_amount}
-                </td>
-                <td className="p-4 font-mono text-gray-500">
-                  {ch.issued_at}
-                </td>
-                <td className="p-4">
-                  <Badge variant={ch.payment_status} size="sm">
-                    {ch.payment_status}
+                <td className="p-3 font-mono text-gray-500">{c.issued_at}</td>
+                <td className="p-3">
+                  <Badge variant={c.payment_status} size="sm">
+                    {c.payment_status}
                   </Badge>
                 </td>
-                <td className="p-4 text-right">
+                <td className="p-3">
+                  <span className="font-mono text-[11px] uppercase bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 border border-gray-300 dark:border-gray-700">
+                    {c.dispatch_status}
+                  </span>
+                </td>
+                <td className="p-3 text-right">
                   <Button
-                    onClick={() => setSelectedChallan(ch)}
+                    onClick={() => {
+                      setSelectedChallan(c);
+                      setShowSmsPreview(false);
+                      setDemoPhone(c.owner_phone || '');
+                    }}
                     variant="outline"
-                    size="sm"
+                    size="xs"
                     icon={Eye}
                   >
                     RECEIPT
@@ -154,22 +192,18 @@ export default function Challans() {
                 </td>
               </tr>
             ))}
-            {filteredChallans.length === 0 && (
-              <tr>
-                <td colSpan={7} className="p-8 text-center text-secondary text-sm font-sans">
-                  No matching challan records found.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
 
-      {/* Official Challan Receipt Preview Modal (Section 13 Requirement) */}
+      {/* Official Receipt & SMS Modal */}
       {selectedChallan && (
         <Modal
           isOpen={!!selectedChallan}
-          onClose={() => setSelectedChallan(null)}
+          onClose={() => {
+            setSelectedChallan(null);
+            setShowSmsPreview(false);
+          }}
           title={`CHALLAN RECEIPT — ${selectedChallan.id}`}
         >
           <div className="space-y-6 print:m-0 font-sans">
@@ -243,7 +277,6 @@ export default function Challans() {
               {/* Payment QR Code Box */}
               <div className="p-4 border border-dashed border-primary flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  {/* Generated QR visual */}
                   <div className="w-16 h-16 bg-primary p-1 border border-primary flex items-center justify-center">
                     <QrCode className="w-14 h-14 text-white" />
                   </div>
@@ -260,9 +293,74 @@ export default function Challans() {
               </div>
             </div>
 
+            {/* Interactive Live SMS Simulator & Faculty Demonstration Drawer */}
+            {showSmsPreview && (
+              <div className="border-2 border-primary bg-amber-50 dark:bg-surface p-5 space-y-4 shadow-brutal-sm">
+                <div className="flex items-center justify-between border-b border-primary/20 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-5 h-5 text-accent" />
+                    <h5 className="font-heading text-sm text-primary dark:text-white uppercase font-black">
+                      CARRIER SMS GATEWAY SIMULATION (MORTH / VAHAN)
+                    </h5>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold bg-primary text-accent px-2 py-0.5 border border-primary">
+                    OFFICIAL TEMPLATE
+                  </span>
+                </div>
+
+                <div className="bg-white dark:bg-surface-dark border border-primary p-4 rounded font-mono text-xs space-y-2">
+                  <div className="flex justify-between text-[11px] text-gray-500 border-b border-dashed border-gray-200 dark:border-gray-700 pb-1.5">
+                    <span>SENDER: <strong>AD-VAHAN / ROADGUARD</strong></span>
+                    <span>TO: <strong>{selectedChallan.owner_phone || '+91 98110 54321'}</strong></span>
+                  </div>
+                  <pre className="font-mono text-xs whitespace-pre-wrap leading-relaxed text-primary dark:text-gray-200">
+                    {getSmsMessageText(selectedChallan)}
+                  </pre>
+                  <div className="text-[10px] text-gray-400 italic pt-1 border-t border-gray-100 dark:border-gray-800">
+                    * Phone number auto-resolved from central vehicle registry for plate {selectedChallan.registration_number}.
+                  </div>
+                </div>
+
+                {/* Faculty Live Demo Trigger */}
+                <div className="pt-2 border-t border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="w-full sm:w-auto flex-1 flex items-center gap-2">
+                    <span className="text-xs font-bold text-primary dark:text-white whitespace-nowrap">
+                      TEST ON PHONE:
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="e.g. 9811054321"
+                      value={demoPhone}
+                      onChange={(e) => setDemoPhone(e.target.value)}
+                      className="px-2.5 py-1.5 border border-primary text-xs font-mono w-full max-w-[180px] bg-white dark:bg-surface"
+                    />
+                  </div>
+                  <div className="flex gap-2 w-full sm:w-auto justify-end">
+                    <button
+                      type="button"
+                      onClick={handleCopySms}
+                      className="px-3 py-1.5 text-xs font-mono font-bold border border-primary bg-white dark:bg-surface hover:bg-surface transition-colors flex items-center gap-1 shadow-brutal-sm"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      {copySuccess ? 'COPIED!' : 'COPY TEXT'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSendWhatsApp}
+                      className="px-3 py-1.5 text-xs font-mono font-black border border-primary bg-green-500 text-white hover:bg-green-600 transition-colors flex items-center gap-1 shadow-brutal-sm"
+                      title="Open WhatsApp notice pre-filled to this number"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      DISPATCH ON WHATSAPP
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Modal Actions */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {selectedChallan.payment_status === 'unpaid' && (
                   <Button
                     onClick={async () => {
@@ -282,7 +380,7 @@ export default function Challans() {
                   EMAIL DISPATCH
                 </Button>
                 <Button onClick={() => handleDispatch('sms')} variant="outline" size="sm" icon={MessageSquare}>
-                  SMS DISPATCH
+                  {showSmsPreview ? 'SMS DISPATCHED' : 'SMS DISPATCH'}
                 </Button>
               </div>
               <div className="flex gap-2">
@@ -300,4 +398,3 @@ export default function Challans() {
     </div>
   );
 }
-
