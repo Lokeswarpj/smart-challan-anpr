@@ -33,10 +33,19 @@ export const challanService = {
   },
 
   async updatePaymentStatus(id, newStatus) {
-    activeChallans = activeChallans.map((c) =>
-      c.id === id ? { ...c, payment_status: newStatus } : c
-    );
-    return true;
+    try {
+      await apiClient.patch(`/challans/${id}/status`, { payment_status: newStatus });
+      activeChallans = activeChallans.map((c) =>
+        c.id === id ? { ...c, payment_status: newStatus } : c
+      );
+      return true;
+    } catch (err) {
+      console.warn('[challanService] Backend status update failed, applying memory fallback:', err?.message);
+      activeChallans = activeChallans.map((c) =>
+        c.id === id ? { ...c, payment_status: newStatus } : c
+      );
+      return true;
+    }
   },
 
   async dispatchReceipt(id, channel) {

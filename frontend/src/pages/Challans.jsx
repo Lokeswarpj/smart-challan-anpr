@@ -263,6 +263,21 @@ export default function Challans() {
             {/* Modal Actions */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <div className="flex gap-2">
+                {selectedChallan.payment_status === 'unpaid' && (
+                  <Button
+                    onClick={async () => {
+                      await challanService.updatePaymentStatus(selectedChallan.id, 'paid');
+                      setSelectedChallan((prev) => ({ ...prev, payment_status: 'paid' }));
+                      const updated = await challanService.getChallans();
+                      setChallans(updated);
+                    }}
+                    variant="accent"
+                    size="sm"
+                    icon={CheckCircle2}
+                  >
+                    MARK AS PAID
+                  </Button>
+                )}
                 <Button onClick={() => handleDispatch('email')} variant="outline" size="sm" icon={Mail}>
                   EMAIL DISPATCH
                 </Button>

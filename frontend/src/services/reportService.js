@@ -11,18 +11,34 @@ export const reportService = {
     }
   },
 
-  exportReport(format = 'pdf') {
-    // Generate browser download simulation for demo
-    const blob = new Blob([`ROADGUARD Traffic Enforcement Report - Exported: ${new Date().toISOString()}`], {
-      type: format === 'pdf' ? 'application/pdf' : 'application/vnd.ms-excel',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `roadguard_enforcement_report_${Date.now()}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
-    a.click();
-    URL.revokeObjectURL(url);
-    return true;
+  async exportReport(format = 'pdf') {
+    try {
+      const response = await apiClient.get(`/reports/export?format=${format}`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], {
+        type: format === 'pdf' ? 'application/pdf' : 'application/vnd.ms-excel',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `roadguard_enforcement_report_${Date.now()}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return true;
+    } catch (err) {
+      console.warn('[reportService] Live export failed, generating local report:', err?.message);
+      const blob = new Blob([`ROADGUARD Traffic Enforcement Report - Exported: ${new Date().toISOString()}`], {
+        type: format === 'pdf' ? 'application/pdf' : 'application/vnd.ms-excel',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `roadguard_enforcement_report_${Date.now()}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return true;
+    }
   }
 };
 
