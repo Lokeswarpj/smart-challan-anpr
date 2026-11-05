@@ -131,3 +131,4 @@ When project examiners or professors ask about your ML model selection during th
 1. **Retain `ai_model/best.pt`:** Keep the current model as the primary production engine in `backend/app/services/anpr_detector.py`.
 2. **Archive Training Artifacts:** Maintain `results.csv`, `BoxF1_curve.png`, and `confusion_matrix.png` in the project repository as empirical evidence for project reports and external review.
 3. **Hardware Readiness:** The current model is fully compatible with both CPU-only servers (Render / Hugging Face CPU) and hardware-accelerated edge devices (NVIDIA Jetson / Raspberry Pi with Coral TPU).
+

@@ -103,6 +103,37 @@ def get_audit_logs(
         for l in logs
     ]
 
+@router.get("/vehicles")
+def list_admin_vehicles(
+    query: Optional[str] = Query(None),
+    limit: int = Query(500, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    admin: Officer = Depends(get_current_admin)
+):
+    q = db.query(Vehicle)
+    if query:
+        term = f"%{query.strip().upper()}%"
+        q = q.filter(
+            (Vehicle.registration_number.ilike(term)) |
+            (Vehicle.owner_name.ilike(term)) |
+            (Vehicle.maker_model.ilike(term))
+        )
+    vehicles = q.offset(offset).limit(limit).all()
+    return [
+        {
+            "registration_number": v.registration_number,
+            "maker_model": v.maker_model,
+            "owner_name": v.owner_name,
+            "owner_phone": v.owner_phone,
+            "registered_rto": v.registered_rto,
+            "color": v.color,
+            "vehicle_class": v.vehicle_class,
+            "fuel_type": v.fuel_type
+        }
+        for v in vehicles
+    ]
+
 @router.delete("/vehicles/{registration_number}")
 def delete_vehicle(
     registration_number: str,
@@ -117,5 +148,20 @@ def delete_vehicle(
             detail=f"Vehicle '{clean_plate}' not found."
         )
     db.delete(veh)
+    
+    # Audit log entry for deletion
+    try:
+        audit = AuditLog(
+            officer_id=admin.id,
+            officer_badge=admin.badge_number,
+            action="delete_vehicle",
+            registration_queried=clean_plate,
+            timestamp=datetime.utcnow(),
+            details=f"Admin deleted vehicle record {clean_plate} from registry."
+        )
+        db.add(audit)
+    except Exception:
+        pass
+
     db.commit()
     return {"success": True, "message": f"Vehicle {clean_plate} record removed."}

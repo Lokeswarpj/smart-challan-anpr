@@ -265,13 +265,13 @@ def correct_positional_errors(text: str) -> str:
         chars[i] = LETTER_TO_DIGIT.get(chars[i], chars[i])
 
     # 4. Intermediate series: Must be letters
-    # Under Central Motor Vehicles Rules (CMVR), 'O' and 'Q' are prohibited in registration series.
+    # 'O' is substituted to 'D' if optical confusion occurred; 'Q' is a legitimate series character (e.g. HR26DQ5551).
     start_series = 3 if (len(chars) >= 9 and not chars[3].isdigit()) else 4
     end_series = len(chars) - 4
     for i in range(start_series, end_series):
         if chars[i].isdigit():
             chars[i] = 'D' if chars[i] == '0' else DIGIT_TO_LETTER.get(chars[i], chars[i])
-        elif chars[i] in ['O', 'Q']:
+        elif chars[i] == 'O':
             chars[i] = 'D'
 
     corrected = "".join(chars)
@@ -300,8 +300,8 @@ def prune_extra_series_characters(text: str, known_plates: Optional[List[str]] =
             if kp.startswith(f"{state}{rto}") and kp.endswith(digits):
                 return kp
 
-    # 1. Strip prohibited CMVR letters ('Q' and 'O')
-    clean_series = series.replace('Q', '').replace('O', '')
+    # 1. Strip 'O' (prohibited in series due to confusion with digit 0)
+    clean_series = series.replace('O', '')
     if len(clean_series) in [1, 2]:
         cand = f"{state}{rto}{clean_series}{digits}"
         if is_valid_plate(cand):
@@ -310,7 +310,7 @@ def prune_extra_series_characters(text: str, known_plates: Optional[List[str]] =
     # 2. Try all 2-character sub-slices
     for i in range(len(series) - 1):
         s2 = series[i:i+2]
-        if 'Q' not in s2 and 'O' not in s2:
+        if 'O' not in s2:
             cand = f"{state}{rto}{s2}{digits}"
             if known_plates and cand in known_plates:
                 return cand
@@ -318,7 +318,7 @@ def prune_extra_series_characters(text: str, known_plates: Optional[List[str]] =
                 return cand
 
     for char in series:
-        if char not in ['Q', 'O']:
+        if char != 'O':
             cand = f"{state}{rto}{char}{digits}"
             if is_valid_plate(cand):
                 return cand

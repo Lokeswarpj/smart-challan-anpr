@@ -161,8 +161,8 @@ class ANPRService:
                             # Scoring priorities:
                             # 1. Exact 10-char plate or known DB plate
                             length_bonus = 1.5 if (len(corrected) == 10 or (len(corrected) == 9 and len(corrected) > 3 and corrected[2].isdigit())) else 0.0
-                            # 2. CMVR compliance (no 'Q' or 'O' in series)
-                            cmvr_bonus = 1.0 if (len(corrected) >= 6 and 'Q' not in corrected[4:6] and 'O' not in corrected[4:6]) else 0.0
+                            # 2. CMVR compliance (no 'O' in series)
+                            cmvr_bonus = 1.0 if (len(corrected) >= 6 and 'O' not in corrected[4:6]) else 0.0
                             
                             priority_score = (avg_conf * mod) + (3.0 if is_valid else 0.0) + length_bonus + cmvr_bonus
 
