@@ -29,6 +29,9 @@ class Settings:
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 12  # 12 hours for officer shift
     
+    # SMS Gateway (Fast2SMS for Indian Carrier Delivery)
+    FAST2SMS_API_KEY: str = os.getenv("FAST2SMS_API_KEY", "")
+
     # Storage
     RECEIPTS_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "storage", "receipts")
     EXPORTS_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "storage", "exports")

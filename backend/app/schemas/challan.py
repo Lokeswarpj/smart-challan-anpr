@@ -39,6 +39,7 @@ class ChallanStatusUpdateRequest(BaseModel):
 
 class DispatchRequest(BaseModel):
     channel: str = "both"  # email, sms, both
+    phone_number: Optional[str] = None
 
 class DispatchResponse(BaseModel):
     success: bool

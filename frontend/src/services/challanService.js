@@ -48,9 +48,11 @@ export const challanService = {
     }
   },
 
-  async dispatchReceipt(id, channel) {
+  async dispatchReceipt(id, channel, phoneNumber = null) {
     try {
-      const response = await apiClient.post(`/challans/${id}/dispatch`, { channel });
+      const payload = { channel };
+      if (phoneNumber) payload.phone_number = phoneNumber;
+      const response = await apiClient.post(`/challans/${id}/dispatch`, payload);
       return response.data;
     } catch (err) {
       await new Promise((resolve) => setTimeout(resolve, 600));

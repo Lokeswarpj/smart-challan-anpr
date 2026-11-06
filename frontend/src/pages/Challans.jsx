@@ -59,7 +59,8 @@ export default function Challans() {
   const handleDispatch = async (channel) => {
     if (!selectedChallan) return;
     setDispatchMessage(`Dispatching via ${channel.toUpperCase()}...`);
-    const res = await challanService.dispatchReceipt(selectedChallan.id, channel);
+    const targetPhone = demoPhone || selectedChallan.owner_phone;
+    const res = await challanService.dispatchReceipt(selectedChallan.id, channel, targetPhone);
     setDispatchMessage(res.message);
     const updated = await challanService.getChallans();
     setChallans(updated);
@@ -68,7 +69,7 @@ export default function Challans() {
       setShowSmsPreview(true);
     }
 
-    setTimeout(() => setDispatchMessage(''), 4000);
+    setTimeout(() => setDispatchMessage(''), 5000);
   };
 
   const getSmsMessageText = (challan) => {
@@ -343,6 +344,15 @@ export default function Challans() {
                     >
                       <Copy className="w-3.5 h-3.5" />
                       {copySuccess ? 'COPIED!' : 'COPY TEXT'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDispatch('sms')}
+                      className="px-3 py-1.5 text-xs font-mono font-bold border border-primary bg-primary text-accent hover:bg-black transition-colors flex items-center gap-1 shadow-brutal-sm"
+                      title="Dispatch real carrier SMS via Fast2SMS gateway"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      DISPATCH CARRIER SMS
                     </button>
                     <button
                       type="button"

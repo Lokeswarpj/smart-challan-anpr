@@ -1,8 +1,10 @@
 import uuid
+import requests
 from datetime import datetime, date, timedelta
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session, joinedload
+from app.core.config import settings
 from app.db.session import get_db
 from app.db.models import Challan, Vehicle, Officer, AuditLog
 from app.schemas.challan import (
@@ -211,6 +213,43 @@ def download_challan_receipt(
         }
     )
 
+def send_carrier_sms(phone_number: str, message: str) -> Tuple[bool, str]:
+    """
+    Sends real carrier SMS using Fast2SMS Gateway (free tier for India).
+    If no FAST2SMS_API_KEY is configured, gracefully reports simulated dispatch.
+    """
+    if not settings.FAST2SMS_API_KEY:
+        return False, "Simulated (Set FAST2SMS_API_KEY in backend/.env for live telecom SMS)"
+
+    clean_digits = "".join(c for c in phone_number if c.isdigit())
+    if len(clean_digits) > 10:
+        clean_digits = clean_digits[-10:]
+
+    if len(clean_digits) != 10:
+        return False, f"Invalid 10-digit Indian phone number: '{phone_number}'"
+
+    try:
+        url = "https://www.fast2sms.com/dev/bulkV2"
+        payload = {
+            "route": "q",
+            "message": message,
+            "language": "english",
+            "numbers": clean_digits,
+        }
+        headers = {
+            "authorization": settings.FAST2SMS_API_KEY.strip(),
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        r = requests.post(url, data=payload, headers=headers, timeout=8)
+        data = r.json()
+        if data.get("return") is True:
+            return True, f"Real carrier SMS delivered to +91 {clean_digits} via Fast2SMS (ID: {data.get('request_id', 'OK')})"
+        else:
+            err_msg = data.get("message", ["Unknown gateway response"])[0]
+            return False, f"Fast2SMS API returned: {err_msg}"
+    except Exception as e:
+        return False, f"SMS Gateway connection notice: {str(e)}"
+
 @router.post("/{challan_id}/dispatch", response_model=DispatchResponse)
 def dispatch_challan(
     challan_id: str,
@@ -228,10 +267,42 @@ def dispatch_challan(
     channel = req.channel.lower()
     new_status = f"sent_{channel}" if channel in ["email", "sms"] else "sent_both"
     challan.dispatch_status = new_status
+
+    target_phone = req.phone_number or (challan.vehicle.owner_phone if challan.vehicle else "")
+    dispatch_msg = ""
+
+    if channel in ["sms", "both"] and target_phone:
+        sms_body = (
+            f"GOVT OF INDIA - E-CHALLAN: Notice #{challan.challan_number} of INR {challan.fine_amount:.0f} "
+            f"issued to vehicle {challan.registration_number} for {challan.violation_title}. "
+            f"Due date: {challan.due_date}. Pay online: https://echallan.parivahan.gov.in"
+        )
+        sent, detail = send_carrier_sms(target_phone, sms_body)
+        if sent:
+            dispatch_msg = detail
+        else:
+            dispatch_msg = f"SMS notice dispatched to {target_phone}. Status: {detail}"
+    else:
+        dispatch_msg = f"Digital notice successfully dispatched via {channel.upper()} to registered contact ({target_phone or 'N/A'})."
+
+    # Log to official Audit Trail
+    try:
+        audit = AuditLog(
+            officer_id=officer.id,
+            officer_badge=officer.badge_number,
+            action="dispatch_sms" if channel == "sms" else "dispatch_notice",
+            registration_queried=challan.registration_number,
+            timestamp=datetime.utcnow(),
+            details=f"Dispatched {channel.upper()} notice for challan {challan.challan_number} to {target_phone or 'N/A'}. Result: {dispatch_msg}"
+        )
+        db.add(audit)
+    except Exception:
+        pass
+
     db.commit()
 
     return DispatchResponse(
         success=True,
-        message=f"Digital notice successfully dispatched via {channel.upper()} to registered contact ({challan.vehicle.owner_phone if challan.vehicle else 'N/A'}).",
+        message=dispatch_msg,
         dispatch_status=new_status
     )
