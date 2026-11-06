@@ -127,7 +127,7 @@ export default function Challans() {
               onClick={() => setStatusFilter(st)}
               className={`px-4 py-2 font-heading text-xs tracking-wider border-2 border-primary dark:border-[#2D3931] transition-all ${
                 statusFilter === st
-                  ? 'bg-accent text-primary font-black shadow-brutal-sm'
+                  ? 'bg-accent text-[#171E19] dark:text-[#171E19] font-black shadow-brutal-sm'
                   : 'bg-white dark:bg-[#121814] text-secondary dark:text-sage hover:bg-surface dark:hover:bg-[#1F2822]'
               }`}
             >
@@ -158,15 +158,15 @@ export default function Challans() {
                 <td className="p-3 font-mono font-bold text-primary dark:text-accent">
                   {c.id}
                 </td>
-                <td className="p-3 font-mono font-black">{c.registration_number}</td>
+                <td className="p-3 font-mono font-black text-primary dark:text-white">{c.registration_number}</td>
                 <td className="p-3">
                   <div className="font-bold text-primary dark:text-white">{c.violation_title}</div>
-                  <div className="text-[11px] font-mono text-gray-500">{c.rule_section}</div>
+                  <div className="text-[11px] font-mono text-gray-500 dark:text-gray-400">{c.rule_section}</div>
                 </td>
                 <td className="p-3 font-heading font-black text-sm text-danger">
                   ₹{c.fine_amount}
                 </td>
-                <td className="p-3 font-mono text-gray-500">{c.issued_at}</td>
+                <td className="p-3 font-mono text-gray-500 dark:text-gray-400">{c.issued_at}</td>
                 <td className="p-3">
                   <Badge variant={c.payment_status} size="sm">
                     {c.payment_status}

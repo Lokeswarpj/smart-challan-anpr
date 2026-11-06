@@ -160,17 +160,25 @@
 }
 
 /* Keep accent badge and button text crisp black */
-.dark .bg-accent,
-.dark [class*="bg-accent"] {
+.dark .bg-accent {
   background-color: #FFE17C !important;
+  color: #171E19 !important;
 }
 
-.dark .bg-accent text,
-.dark .bg-accent span,
-.dark .bg-accent div,
+.dark .bg-accent *,
 .dark button.bg-accent,
 .dark .bg-accent.text-primary,
 .dark .bg-accent .text-primary {
+  color: #171E19 !important;
+}
+
+/* On hover with hover:bg-accent in dark mode */
+.dark .hover\:bg-accent:hover {
+  background-color: #FFE17C !important;
+  color: #171E19 !important;
+}
+
+.dark .hover\:bg-accent:hover * {
   color: #171E19 !important;
 }
 

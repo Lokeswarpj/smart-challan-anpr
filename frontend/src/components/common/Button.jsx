@@ -18,7 +18,7 @@ export default function Button({
     primary:
       'bg-primary text-white border-primary hover:bg-black shadow-brutal-sm hover:shadow-brutal',
     accent:
-      'bg-accent text-primary border-primary hover:bg-accent-hover shadow-brutal-sm hover:shadow-brutal font-extrabold',
+      'bg-accent text-[#171E19] dark:text-[#171E19] border-primary hover:bg-accent-hover shadow-brutal-sm hover:shadow-brutal font-extrabold',
     outline:
       'bg-transparent text-primary border-primary hover:bg-surface shadow-brutal-sm',
     danger:

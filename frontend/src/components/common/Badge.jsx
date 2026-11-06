@@ -14,8 +14,8 @@ export default function Badge({
     expiring_soon: 'bg-amber-100 text-amber-900 border-amber-600 dark:bg-amber-950 dark:text-amber-300',
     paid: 'bg-green-100 text-green-900 border-green-600 dark:bg-green-950 dark:text-green-300',
     pending: 'bg-red-100 text-red-900 border-red-600 dark:bg-red-950 dark:text-red-300',
-    accent: 'bg-accent text-primary border-primary font-black',
-    neutral: 'bg-surface text-secondary border-sage dark:bg-surface-dark dark:text-gray-300',
+    accent: 'bg-accent text-[#171E19] dark:text-[#171E19] border-primary font-black',
+    neutral: 'bg-surface text-secondary border-sage dark:bg-[#1A221D] dark:text-gray-200 dark:border-[#2D3931]',
   };
 
   const sizeStyles = {

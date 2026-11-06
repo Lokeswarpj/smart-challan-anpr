@@ -225,7 +225,7 @@ export default function VehicleVerification() {
           </form>
 
           {/* Quick Clickable Demo Plates */}
-          <div className="mt-6 pt-4 border-t border-primary/20">
+          <div className="mt-6 pt-4 border-t border-primary/20 dark:border-[#2D3931]">
             <span className="text-[11px] font-mono text-secondary dark:text-gray-400 uppercase font-bold block mb-2">
               SAMPLE TEST VEHICLES:
             </span>
@@ -238,10 +238,14 @@ export default function VehicleVerification() {
                     setQueryPlate(d.plate);
                     handleVerify(d.plate);
                   }}
-                  className="px-2.5 py-1 text-xs font-mono font-bold border border-primary bg-surface dark:bg-surface-dark hover:bg-accent text-primary dark:text-white transition-colors shadow-brutal-sm flex items-center gap-1.5"
+                  className="px-2.5 py-1 text-xs font-mono font-bold border border-primary dark:border-[#2D3931] bg-surface dark:bg-[#101512] hover:bg-accent dark:hover:bg-accent text-primary dark:text-[#FFE17C] hover:text-[#171E19] dark:hover:text-[#171E19] transition-all shadow-brutal-sm flex items-center gap-1.5 group cursor-pointer"
                 >
-                  <span>{d.plate}</span>
-                  <span className="text-[10px] text-gray-500 font-sans">({d.desc})</span>
+                  <span className="font-mono font-bold tracking-wider group-hover:text-[#171E19] text-primary dark:text-[#FFE17C]">
+                    {d.plate}
+                  </span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400 font-sans group-hover:text-[#171E19]">
+                    ({d.desc})
+                  </span>
                 </button>
               ))}
             </div>
