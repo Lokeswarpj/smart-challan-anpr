@@ -5,47 +5,63 @@
  */
 
 let cachedVoices = [];
+let voicesInitialized = false;
 const PREFERRED_VOICE_KEY = 'roadguard_preferred_voice';
 
-// Eagerly pre-populate voices when available in browser
+// Safely initialize voices once without infinite loop risk
 if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-  const updateVoices = () => {
-    try {
-      const list = window.speechSynthesis.getVoices() || [];
-      if (list.length > 0) {
-        cachedVoices = list;
+  try {
+    const initVoices = () => {
+      try {
+        if (!window.speechSynthesis) return;
+        const list = window.speechSynthesis.getVoices();
+        if (Array.isArray(list) && list.length > 0) {
+          cachedVoices = list;
+          voicesInitialized = true;
+          // Unhook handler to prevent Chromium infinite recursive loops
+          window.speechSynthesis.onvoiceschanged = null;
+        }
+      } catch (err) {
+        // Safe fallback
       }
-    } catch (e) {
-      console.warn('Unable to get speech synthesis voices', e);
-    }
-  };
+    };
 
-  updateVoices();
-  if (window.speechSynthesis.onvoiceschanged !== undefined) {
-    window.speechSynthesis.onvoiceschanged = updateVoices;
+    initVoices();
+    if (!voicesInitialized && window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = initVoices;
+    }
+  } catch (e) {
+    console.warn('Speech synthesis initialization skipped:', e);
   }
 }
 
 export const speechUtil = {
   /**
-   * Retrieves all available voices from the browser
+   * Retrieves all available voices from the browser safely
    */
   getVoices() {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
       return [];
     }
-    const list = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices() || [];
-    if (list.length > 0) cachedVoices = list;
-    return list;
+    try {
+      if (cachedVoices.length > 0) return cachedVoices;
+      const list = window.speechSynthesis.getVoices();
+      if (Array.isArray(list) && list.length > 0) {
+        cachedVoices = list;
+      }
+      return cachedVoices;
+    } catch {
+      return [];
+    }
   },
 
   /**
    * Helper to check if a voice is Indian (English or regional)
    */
   isIndianVoice(voice) {
-    if (!voice) return false;
-    const lang = (voice.lang || '').toLowerCase().replace('_', '-');
-    const name = (voice.name || '').toLowerCase();
+    if (!voice || typeof voice !== 'object') return false;
+    const lang = String(voice.lang || '').toLowerCase().replace('_', '-');
+    const name = String(voice.name || '').toLowerCase();
     return (
       lang === 'en-in' ||
       lang.startsWith('hi') ||
@@ -73,6 +89,7 @@ export const speechUtil = {
    */
   getPreferredVoiceURI() {
     try {
+      if (typeof window === 'undefined') return '';
       return localStorage.getItem(PREFERRED_VOICE_KEY) || '';
     } catch {
       return '';
@@ -84,6 +101,7 @@ export const speechUtil = {
    */
   setPreferredVoice(voiceURI) {
     try {
+      if (typeof window === 'undefined') return;
       localStorage.setItem(PREFERRED_VOICE_KEY, voiceURI);
     } catch {
       // Ignore localStorage write errors
@@ -94,57 +112,67 @@ export const speechUtil = {
    * Automatically select the best Indian voice for the target language
    */
   findBestVoice(lang = 'en') {
-    const voices = this.getVoices();
-    if (!voices || voices.length === 0) return null;
+    try {
+      const voices = this.getVoices();
+      if (!Array.isArray(voices) || voices.length === 0) return null;
 
-    // 1. User explicitly selected voice
-    const savedURI = this.getPreferredVoiceURI();
-    if (savedURI) {
-      const saved = voices.find((v) => v.voiceURI === savedURI || v.name === savedURI);
-      if (saved) return saved;
+      const validVoices = voices.filter((v) => v && typeof v === 'object');
+      if (validVoices.length === 0) return null;
+
+      // 1. User explicitly selected voice
+      const savedURI = this.getPreferredVoiceURI();
+      if (savedURI) {
+        const saved = validVoices.find(
+          (v) => (v.voiceURI && v.voiceURI === savedURI) || (v.name && v.name === savedURI)
+        );
+        if (saved) return saved;
+      }
+
+      // 2. Hindi language selected
+      if (lang === 'hi') {
+        const hiVoice =
+          validVoices.find((v) => String(v.name || '').includes('Madhur')) ||
+          validVoices.find((v) => String(v.name || '').includes('Swara')) ||
+          validVoices.find((v) => String(v.lang || '').toLowerCase().startsWith('hi'));
+        if (hiVoice) return hiVoice;
+      }
+
+      // 3. Kannada language selected
+      if (lang === 'kn') {
+        const knVoice =
+          validVoices.find((v) => String(v.name || '').includes('Gagan')) ||
+          validVoices.find((v) => String(v.name || '').includes('Sapna')) ||
+          validVoices.find((v) => String(v.lang || '').toLowerCase().startsWith('kn'));
+        if (knVoice) return knVoice;
+      }
+
+      // 4. Default: Indian English Voices in priority order
+      // Microsoft Neerja (Natural Female Indian)
+      // Microsoft Prabhat (Natural Male Indian)
+      // Microsoft Heera (Female Indian)
+      // Microsoft Ravi (Male Indian)
+      // Google English (India) / Apple Veena / Rishi / generic en-IN
+      const indianVoice =
+        validVoices.find((v) => String(v.name || '').includes('Neerja')) ||
+        validVoices.find((v) => String(v.name || '').includes('Prabhat')) ||
+        validVoices.find((v) => String(v.name || '').includes('Heera')) ||
+        validVoices.find((v) => String(v.name || '').includes('Ravi')) ||
+        validVoices.find((v) => String(v.lang || '').toLowerCase().replace('_', '-') === 'en-in') ||
+        validVoices.find((v) => String(v.name || '').toLowerCase().includes('india')) ||
+        validVoices.find((v) => this.isIndianVoice(v));
+
+      if (indianVoice) return indianVoice;
+
+      // 5. Fallback to standard English voice
+      return (
+        validVoices.find((v) => String(v.lang || '').toLowerCase().startsWith('en')) ||
+        validVoices[0] ||
+        null
+      );
+    } catch (e) {
+      console.warn('findBestVoice error:', e);
+      return null;
     }
-
-    // 2. Hindi language selected
-    if (lang === 'hi') {
-      const hiVoice =
-        voices.find((v) => (v.name || '').includes('Madhur')) ||
-        voices.find((v) => (v.name || '').includes('Swara')) ||
-        voices.find((v) => (v.lang || '').toLowerCase().startsWith('hi'));
-      if (hiVoice) return hiVoice;
-    }
-
-    // 3. Kannada language selected
-    if (lang === 'kn') {
-      const knVoice =
-        voices.find((v) => (v.name || '').includes('Gagan')) ||
-        voices.find((v) => (v.name || '').includes('Sapna')) ||
-        voices.find((v) => (v.lang || '').toLowerCase().startsWith('kn'));
-      if (knVoice) return knVoice;
-    }
-
-    // 4. Default: Indian English Voices in priority order
-    // Microsoft Neerja (Natural Female Indian)
-    // Microsoft Prabhat (Natural Male Indian)
-    // Microsoft Heera (Female Indian)
-    // Microsoft Ravi (Male Indian)
-    // Google English (India) / Apple Veena / Rishi / generic en-IN
-    const indianVoice =
-      voices.find((v) => (v.name || '').includes('Neerja')) ||
-      voices.find((v) => (v.name || '').includes('Prabhat')) ||
-      voices.find((v) => (v.name || '').includes('Heera')) ||
-      voices.find((v) => (v.name || '').includes('Ravi')) ||
-      voices.find((v) => (v.lang || '').toLowerCase().replace('_', '-') === 'en-in') ||
-      voices.find((v) => (v.name || '').toLowerCase().includes('india')) ||
-      voices.find((v) => this.isIndianVoice(v));
-
-    if (indianVoice) return indianVoice;
-
-    // 5. Fallback to standard English voice
-    return (
-      voices.find((v) => (v.lang || '').toLowerCase().startsWith('en')) ||
-      voices[0] ||
-      null
-    );
   },
 
   /**
@@ -189,38 +217,38 @@ export const speechUtil = {
    * Speak a text string using the browser's native SpeechSynthesis API
    */
   speak(text, lang = 'en') {
-    if (!('speechSynthesis' in window)) {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
       console.warn('Speech synthesis not supported in this browser.');
       return;
     }
 
-    // Cancel any previous speech
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95; // Slightly measured rate for maximum clarity
-    utterance.pitch = 1.0;
-
-    // Set voice language tag
-    if (lang === 'hi') {
-      utterance.lang = 'hi-IN';
-    } else if (lang === 'kn') {
-      utterance.lang = 'kn-IN';
-    } else {
-      utterance.lang = 'en-IN'; // Indian English voice preferred
-    }
-
-    // Explicitly attach best matching Indian voice
     try {
+      // Cancel any previous speech
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.95; // Slightly measured rate for maximum clarity
+      utterance.pitch = 1.0;
+
+      // Set voice language tag
+      if (lang === 'hi') {
+        utterance.lang = 'hi-IN';
+      } else if (lang === 'kn') {
+        utterance.lang = 'kn-IN';
+      } else {
+        utterance.lang = 'en-IN'; // Indian English voice preferred
+      }
+
+      // Explicitly attach best matching Indian voice
       const chosenVoice = this.findBestVoice(lang);
       if (chosenVoice) {
         utterance.voice = chosenVoice;
       }
-    } catch (e) {
-      console.warn('Could not assign speech voice', e);
-    }
 
-    window.speechSynthesis.speak(utterance);
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn('Speech synthesis error:', e);
+    }
   },
 
   /**
@@ -286,8 +314,12 @@ export const speechUtil = {
   },
 
   stop() {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {
+        // Safe ignore
+      }
     }
   }
 };

@@ -19,26 +19,35 @@ export default function Settings() {
   const [selectedVoiceURI, setSelectedVoiceURI] = useState(speechUtil.getPreferredVoiceURI());
 
   useEffect(() => {
-    const updateVoiceList = () => {
-      const v = speechUtil.getVoices();
-      if (v && v.length > 0) {
-        setAvailableVoices(v);
-        const saved = speechUtil.getPreferredVoiceURI();
-        if (saved) {
-          setSelectedVoiceURI(saved);
-        } else {
-          const best = speechUtil.findBestVoice(currentLanguage);
-          if (best) {
-            setSelectedVoiceURI(best.voiceURI);
+    let mounted = true;
+
+    const loadVoicesSafe = () => {
+      try {
+        const v = speechUtil.getVoices();
+        if (mounted && Array.isArray(v) && v.length > 0) {
+          setAvailableVoices(v);
+          const saved = speechUtil.getPreferredVoiceURI();
+          if (saved) {
+            setSelectedVoiceURI(saved);
+          } else {
+            const best = speechUtil.findBestVoice(currentLanguage);
+            if (best) {
+              setSelectedVoiceURI(best.voiceURI || best.name || '');
+            }
           }
         }
+      } catch (err) {
+        console.warn('Unable to load speech voices:', err);
       }
     };
 
-    updateVoiceList();
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.onvoiceschanged = updateVoiceList;
-    }
+    loadVoicesSafe();
+    const t = setTimeout(loadVoicesSafe, 350);
+
+    return () => {
+      mounted = false;
+      clearTimeout(t);
+    };
   }, [currentLanguage]);
 
   const handleTestSpeech = () => {
@@ -151,20 +160,22 @@ export default function Settings() {
                 <option value="">Default Indian English Engine (Auto-detecting...)</option>
               ) : (
                 <>
-                  <optgroup label="🇮🇳 Recommended Indian Voices">
-                    {availableVoices
-                      .filter((v) => speechUtil.isIndianVoice(v))
-                      .map((v) => (
-                        <option key={v.voiceURI || v.name} value={v.voiceURI}>
-                          🇮🇳 {v.name} ({v.lang})
-                        </option>
-                      ))}
-                  </optgroup>
-                  <optgroup label="🌐 Other Available Voices">
+                  {availableVoices.some((v) => speechUtil.isIndianVoice(v)) && (
+                    <optgroup label="🇮🇳 Recommended Indian Voices">
+                      {availableVoices
+                        .filter((v) => speechUtil.isIndianVoice(v))
+                        .map((v, i) => (
+                          <option key={v.voiceURI || v.name || `in-${i}`} value={v.voiceURI || v.name}>
+                            🇮🇳 {v.name} ({v.lang})
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+                  <optgroup label="🌐 All Available Voices">
                     {availableVoices
                       .filter((v) => !speechUtil.isIndianVoice(v))
-                      .map((v) => (
-                        <option key={v.voiceURI || v.name} value={v.voiceURI}>
+                      .map((v, i) => (
+                        <option key={v.voiceURI || v.name || `all-${i}`} value={v.voiceURI || v.name}>
                           {v.name} ({v.lang})
                         </option>
                       ))}
