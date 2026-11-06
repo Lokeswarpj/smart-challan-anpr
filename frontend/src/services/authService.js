@@ -1,5 +1,4 @@
-\
-7import apiClient from './apiClient';
+import apiClient from './apiClient';
 import { MOCK_OFFICERS } from '../mocks/officers';
 
 export const authService = {
