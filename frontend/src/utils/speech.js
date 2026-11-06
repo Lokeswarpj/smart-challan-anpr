@@ -1,16 +1,156 @@
 /**
  * Utility for browser-based text-to-speech audio announcements
- * with specialized Indian vehicle registration plate phonetic formatting.
+ * with specialized Indian vehicle registration plate phonetic formatting
+ * and native Indian English / regional voice prioritization.
  */
+
+let cachedVoices = [];
+const PREFERRED_VOICE_KEY = 'roadguard_preferred_voice';
+
+// Eagerly pre-populate voices when available in browser
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  const updateVoices = () => {
+    try {
+      const list = window.speechSynthesis.getVoices() || [];
+      if (list.length > 0) {
+        cachedVoices = list;
+      }
+    } catch (e) {
+      console.warn('Unable to get speech synthesis voices', e);
+    }
+  };
+
+  updateVoices();
+  if (window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = updateVoices;
+  }
+}
+
 export const speechUtil = {
+  /**
+   * Retrieves all available voices from the browser
+   */
+  getVoices() {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      return [];
+    }
+    const list = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices() || [];
+    if (list.length > 0) cachedVoices = list;
+    return list;
+  },
+
+  /**
+   * Helper to check if a voice is Indian (English or regional)
+   */
+  isIndianVoice(voice) {
+    if (!voice) return false;
+    const lang = (voice.lang || '').toLowerCase().replace('_', '-');
+    const name = (voice.name || '').toLowerCase();
+    return (
+      lang === 'en-in' ||
+      lang.startsWith('hi') ||
+      lang.startsWith('kn') ||
+      lang.startsWith('ta') ||
+      lang.startsWith('te') ||
+      lang.startsWith('mr') ||
+      name.includes('india') ||
+      name.includes('neerja') ||
+      name.includes('prabhat') ||
+      name.includes('heera') ||
+      name.includes('ravi') ||
+      name.includes('madhur') ||
+      name.includes('swara') ||
+      name.includes('gagan') ||
+      name.includes('sapna') ||
+      name.includes('veena') ||
+      name.includes('rishi') ||
+      name.includes('lekha')
+    );
+  },
+
+  /**
+   * Get user's preferred voice URI from localStorage
+   */
+  getPreferredVoiceURI() {
+    try {
+      return localStorage.getItem(PREFERRED_VOICE_KEY) || '';
+    } catch {
+      return '';
+    }
+  },
+
+  /**
+   * Save user's preferred voice URI
+   */
+  setPreferredVoice(voiceURI) {
+    try {
+      localStorage.setItem(PREFERRED_VOICE_KEY, voiceURI);
+    } catch {
+      // Ignore localStorage write errors
+    }
+  },
+
+  /**
+   * Automatically select the best Indian voice for the target language
+   */
+  findBestVoice(lang = 'en') {
+    const voices = this.getVoices();
+    if (!voices || voices.length === 0) return null;
+
+    // 1. User explicitly selected voice
+    const savedURI = this.getPreferredVoiceURI();
+    if (savedURI) {
+      const saved = voices.find((v) => v.voiceURI === savedURI || v.name === savedURI);
+      if (saved) return saved;
+    }
+
+    // 2. Hindi language selected
+    if (lang === 'hi') {
+      const hiVoice =
+        voices.find((v) => (v.name || '').includes('Madhur')) ||
+        voices.find((v) => (v.name || '').includes('Swara')) ||
+        voices.find((v) => (v.lang || '').toLowerCase().startsWith('hi'));
+      if (hiVoice) return hiVoice;
+    }
+
+    // 3. Kannada language selected
+    if (lang === 'kn') {
+      const knVoice =
+        voices.find((v) => (v.name || '').includes('Gagan')) ||
+        voices.find((v) => (v.name || '').includes('Sapna')) ||
+        voices.find((v) => (v.lang || '').toLowerCase().startsWith('kn'));
+      if (knVoice) return knVoice;
+    }
+
+    // 4. Default: Indian English Voices in priority order
+    // Microsoft Neerja (Natural Female Indian)
+    // Microsoft Prabhat (Natural Male Indian)
+    // Microsoft Heera (Female Indian)
+    // Microsoft Ravi (Male Indian)
+    // Google English (India) / Apple Veena / Rishi / generic en-IN
+    const indianVoice =
+      voices.find((v) => (v.name || '').includes('Neerja')) ||
+      voices.find((v) => (v.name || '').includes('Prabhat')) ||
+      voices.find((v) => (v.name || '').includes('Heera')) ||
+      voices.find((v) => (v.name || '').includes('Ravi')) ||
+      voices.find((v) => (v.lang || '').toLowerCase().replace('_', '-') === 'en-in') ||
+      voices.find((v) => (v.name || '').toLowerCase().includes('india')) ||
+      voices.find((v) => this.isIndianVoice(v));
+
+    if (indianVoice) return indianVoice;
+
+    // 5. Fallback to standard English voice
+    return (
+      voices.find((v) => (v.lang || '').toLowerCase().startsWith('en')) ||
+      voices[0] ||
+      null
+    );
+  },
+
   /**
    * Formats an alphanumeric Indian registration plate into a clear phonetic
    * representation so that Web Speech API pronounces every letter and digit distinctly
    * (e.g. "K. A., 0 1, A. B., 1 2 3 4" instead of "ka zero one...")
-   *
-   * @param {string} plate - Raw registration plate (e.g. "KA01AB1234", "HR71H0003")
-   * @param {string} lang - Selected language code ('en', 'hi', 'kn')
-   * @returns {string} Phonetically punctuated plate for clear speech synthesis
    */
   formatPlateForSpeech(plate, lang = 'en') {
     if (!plate) return '';
@@ -61,7 +201,7 @@ export const speechUtil = {
     utterance.rate = 0.95; // Slightly measured rate for maximum clarity
     utterance.pitch = 1.0;
 
-    // Set voice language
+    // Set voice language tag
     if (lang === 'hi') {
       utterance.lang = 'hi-IN';
     } else if (lang === 'kn') {
@@ -70,30 +210,14 @@ export const speechUtil = {
       utterance.lang = 'en-IN'; // Indian English voice preferred
     }
 
-    // Best-effort voice matching if voices are already loaded
+    // Explicitly attach best matching Indian voice
     try {
-      const voices = window.speechSynthesis.getVoices?.() || [];
-      if (voices.length > 0) {
-        if (lang === 'hi') {
-          const v = voices.find((vox) => vox.lang && vox.lang.startsWith('hi'));
-          if (v) utterance.voice = v;
-        } else if (lang === 'kn') {
-          const v = voices.find((vox) => vox.lang && vox.lang.startsWith('kn'));
-          if (v) utterance.voice = v;
-        } else {
-          const inVoice = voices.find(
-            (vox) =>
-              vox.lang === 'en-IN' ||
-              vox.lang === 'en_IN' ||
-              vox.name.toLowerCase().includes('india')
-          );
-          if (inVoice) {
-            utterance.voice = inVoice;
-          }
-        }
+      const chosenVoice = this.findBestVoice(lang);
+      if (chosenVoice) {
+        utterance.voice = chosenVoice;
       }
     } catch (e) {
-      // Fallback to default utterance settings
+      console.warn('Could not assign speech voice', e);
     }
 
     window.speechSynthesis.speak(utterance);

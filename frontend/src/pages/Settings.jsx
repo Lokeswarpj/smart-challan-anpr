@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Volume2, Sun, Moon, Globe, Database, Shield, CheckCircle2 } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
 import Button from '../components/common/Button';
@@ -15,6 +15,31 @@ export default function Settings() {
   const { officer } = useAuth();
   const [testSpeechStatus, setTestSpeechStatus] = useState(false);
   const [syncStatus, setSyncStatus] = useState('');
+  const [availableVoices, setAvailableVoices] = useState([]);
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState(speechUtil.getPreferredVoiceURI());
+
+  useEffect(() => {
+    const updateVoiceList = () => {
+      const v = speechUtil.getVoices();
+      if (v && v.length > 0) {
+        setAvailableVoices(v);
+        const saved = speechUtil.getPreferredVoiceURI();
+        if (saved) {
+          setSelectedVoiceURI(saved);
+        } else {
+          const best = speechUtil.findBestVoice(currentLanguage);
+          if (best) {
+            setSelectedVoiceURI(best.voiceURI);
+          }
+        }
+      }
+    };
+
+    updateVoiceList();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = updateVoiceList;
+    }
+  }, [currentLanguage]);
 
   const handleTestSpeech = () => {
     setTestSpeechStatus(true);
@@ -107,17 +132,67 @@ export default function Settings() {
           Enables text-to-speech audio readout of key document compliance findings (e.g. "Insurance expired") for field officers.
         </p>
 
-        <div className="flex items-center justify-between pt-2">
-          <span className="text-xs font-mono font-bold">CURRENT VOICE ENGINE: SpeechSynthesis (Browser Native)</span>
-          <Button
-            onClick={handleTestSpeech}
-            variant="outline"
-            size="sm"
-            loading={testSpeechStatus}
-            icon={Volume2}
-          >
-            TEST VOICE ALERT
-          </Button>
+        {/* Voice Selector & Engine Controls */}
+        <div className="pt-2 space-y-3">
+          <label className="text-xs font-mono font-bold text-primary dark:text-gray-300 uppercase block">
+            SELECTED VOICE ENGINE & ACCENT:
+          </label>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <select
+              value={selectedVoiceURI}
+              onChange={(e) => {
+                const uri = e.target.value;
+                setSelectedVoiceURI(uri);
+                speechUtil.setPreferredVoice(uri);
+              }}
+              className="flex-1 bg-surface dark:bg-[#101512] border-2 border-primary dark:border-[#2D3931] p-2.5 font-sans text-xs text-primary dark:text-white outline-none shadow-brutal-sm cursor-pointer"
+            >
+              {availableVoices.length === 0 ? (
+                <option value="">Default Indian English Engine (Auto-detecting...)</option>
+              ) : (
+                <>
+                  <optgroup label="🇮🇳 Recommended Indian Voices">
+                    {availableVoices
+                      .filter((v) => speechUtil.isIndianVoice(v))
+                      .map((v) => (
+                        <option key={v.voiceURI || v.name} value={v.voiceURI}>
+                          🇮🇳 {v.name} ({v.lang})
+                        </option>
+                      ))}
+                  </optgroup>
+                  <optgroup label="🌐 Other Available Voices">
+                    {availableVoices
+                      .filter((v) => !speechUtil.isIndianVoice(v))
+                      .map((v) => (
+                        <option key={v.voiceURI || v.name} value={v.voiceURI}>
+                          {v.name} ({v.lang})
+                        </option>
+                      ))}
+                  </optgroup>
+                </>
+              )}
+            </select>
+
+            <Button
+              onClick={handleTestSpeech}
+              variant="accent"
+              size="sm"
+              loading={testSpeechStatus}
+              icon={Volume2}
+              className="shadow-brutal-sm flex-shrink-0"
+            >
+              TEST VOICE ALERT
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2 text-[11px] font-mono text-gray-500 dark:text-gray-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>
+              {availableVoices.some((v) => speechUtil.isIndianVoice(v))
+                ? 'Native Indian accent engine detected and prioritized.'
+                : 'Using browser English engine with Indian phonetic pronunciation rules.'}
+            </span>
+          </div>
         </div>
       </div>
 
