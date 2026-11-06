@@ -1,5 +1,66 @@
 export const MOCK_VEHICLES = [
   {
+    registration_number: "HR71H0003",
+    owner_name: "Vikramaditya Singhania",
+    owner_phone: "+91 98765 43210",
+    owner_email: "vikram.singhania@mercedes-owner.in",
+    vehicle_class: "Motor Car (LMV)",
+    maker_model: "Mercedes-Benz GLE 450 4MATIC",
+    fuel_type: "Petrol",
+    color: "Polar White",
+    registration_date: "2024-03-10",
+    registered_rto: "HR-71 (Ganaur, Sonipat, Haryana)",
+    documents: {
+      rc: {
+        status: "valid",
+        rc_number: "RCHR71H00032024",
+        chassis_number: "WDC1671591A990003",
+        engine_number: "M2569300003445",
+        issue_date: "2024-03-10",
+        expiry_date: "2039-03-09",
+        days_left: 4745
+      },
+      insurance: {
+        status: "valid",
+        policy_number: "HDFC-ERGO-0003-9988",
+        insurer_name: "HDFC ERGO General Insurance",
+        policy_type: "Comprehensive Package",
+        issue_date: "2026-05-10",
+        expiry_date: "2027-05-09",
+        days_left: 184
+      },
+      puc: {
+        status: "valid",
+        certificate_number: "PUC/HR71/2026/0003",
+        emission_norm: "BS-VI",
+        tested_value: "CO: 0.12%, HC: 38 ppm",
+        issue_date: "2026-05-15",
+        expiry_date: "2026-11-15",
+        days_left: 9
+      },
+      road_tax: {
+        status: "paid",
+        tax_type: "One-Time Life Time Tax (LTT)",
+        amount_paid: 145000,
+        payment_date: "2024-03-10",
+        valid_until: "2039-03-09",
+        days_left: 4745
+      }
+    },
+    previous_challans: [
+      {
+        id: "CH-HR71-2026-0003",
+        challan_number: "CH-HR71-2026-0003",
+        violation_title: "Over-Speeding on Expressway (Section 112/183 MV Act)",
+        fine_amount: 2000,
+        issued_at: "2026-10-25 14:30",
+        location: "NH-44 Expressway Checkpoint, Sonipat",
+        payment_status: "unpaid",
+        officer_badge: "KA-POL-2026"
+      }
+    ]
+  },
+  {
     registration_number: "KA01AB1234",
     owner_name: "Rahul Sharma",
     owner_phone: "+91 98450 12345",

@@ -54,6 +54,15 @@ def deskew_plate(image: np.ndarray) -> np.ndarray:
         
     return image
 
+def unsharp_mask(image: np.ndarray, amount: float = 1.8) -> np.ndarray:
+    """
+    Sharpens edges to cleanly separate fine strokes like 7, 1, I, H
+    and prevent them from merging into curved shapes like 0, 6, or D.
+    """
+    blurred = cv2.GaussianBlur(image, (5, 5), 1.0)
+    sharpened = float(amount + 1.0) * image - float(amount) * blurred
+    return np.clip(sharpened, 0, 255).astype(np.uint8)
+
 def enhance_plate_contrast(gray: np.ndarray) -> np.ndarray:
     """
     Applies Contrast Limited Adaptive Histogram Equalization (CLAHE)
@@ -67,10 +76,11 @@ def preprocess_plate(plate_bgr: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     Complete OpenCV preprocessing pipeline:
     1. Deskew perspective angle
-    2. Resize to standard OCR height (e.g. 100px) while maintaining aspect ratio
+    2. Resize to high-clarity OCR height (~140px) while maintaining aspect ratio
     3. Bilateral filter for edge-preserving denoising
-    4. CLAHE contrast enhancement
-    5. Otsu's adaptive binarization
+    4. Unsharp masking to accentuate thin character strokes (e.g. 7, 1, H)
+    5. CLAHE contrast enhancement
+    6. Otsu's adaptive binarization
     Returns: (enhanced_grayscale, binarized_threshold)
     """
     if plate_bgr is None or plate_bgr.size == 0:
@@ -85,20 +95,23 @@ def preprocess_plate(plate_bgr: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     else:
         gray = aligned
 
-    # 3. Standardize scale (height ~100px for optimal OCR receptive field)
+    # 3. Standardize scale (height ~140px for optimal OCR stroke separation)
     h, w = gray.shape
-    if h < 80 or h > 200:
-        scale = 100.0 / h
+    if h < 120 or h > 240:
+        scale = 140.0 / h
         new_w = int(w * scale)
-        gray = cv2.resize(gray, (new_w, 100), interpolation=cv2.INTER_CUBIC)
+        gray = cv2.resize(gray, (new_w, 140), interpolation=cv2.INTER_LANCZOS4 if scale > 1 else cv2.INTER_AREA)
 
     # 4. Bilateral filtering (smoothes sensor noise while preserving character edges)
     denoised = cv2.bilateralFilter(gray, 9, 75, 75)
 
-    # 5. CLAHE contrast adjustment
-    enhanced = enhance_plate_contrast(denoised)
+    # 5. Unsharp masking for crisp stroke differentiation
+    sharpened = unsharp_mask(denoised, amount=1.5)
 
-    # 6. Adaptive Otsu Binarization
+    # 6. CLAHE contrast adjustment
+    enhanced = enhance_plate_contrast(sharpened)
+
+    # 7. Adaptive Otsu Binarization
     _, binarized = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
     # Ensure background is bright and characters are dark (or vice versa for OCR)

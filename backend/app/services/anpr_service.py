@@ -231,14 +231,14 @@ class ANPRService:
                 "message": "No vehicle license plate detected in image."
             }
 
-        # Standardize cropped plate height to 85px for CPU acceleration
+        # Standardize cropped plate height to 140px for optimal OCR character differentiation
         ch, cw = cropped_plate.shape[:2]
-        if ch != 85 and ch > 0:
-            scale = 85.0 / ch
-            new_w = max(100, int(cw * scale))
+        if (ch < 110 or ch > 240) and ch > 0:
+            scale = 140.0 / ch
+            new_w = max(140, int(cw * scale))
             cropped_plate = cv2.resize(
-                cropped_plate, (new_w, 85), 
-                interpolation=cv2.INTER_AREA if scale < 1 else cv2.INTER_CUBIC
+                cropped_plate, (new_w, 140), 
+                interpolation=cv2.INTER_LANCZOS4 if scale > 1 else cv2.INTER_AREA
             )
 
         # --- STAGE 2: Preprocessing (OpenCV) ---

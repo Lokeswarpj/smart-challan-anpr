@@ -10,7 +10,9 @@ import {
   ArrowRight,
   ShieldCheck,
   RefreshCw,
-  Cpu
+  Cpu,
+  Edit3,
+  Check
 } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
 import Button from '../components/common/Button';
@@ -22,6 +24,8 @@ export default function ANPRScanner() {
   const [activeStep, setActiveStep] = useState(0);
   const [result, setResult] = useState(null);
   const [uploadedPreview, setUploadedPreview] = useState(null);
+  const [editablePlate, setEditablePlate] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -95,6 +99,10 @@ export default function ANPRScanner() {
     const res = await detectPromise;
     setActiveStep(5);
     setResult(res);
+    if (res?.registration_number) {
+      setEditablePlate(res.registration_number);
+      setIsEditing(false);
+    }
     setProcessing(false);
   };
 
@@ -278,14 +286,51 @@ export default function ANPRScanner() {
           {result && (
             result.detected && result.registration_number ? (
               <div className="bg-primary text-white border-2 border-primary shadow-brutal p-6 relative overflow-hidden">
-                <div className="inline-block bg-accent text-primary px-2.5 py-0.5 text-[10px] font-mono font-black uppercase mb-3">
-                  ANPR DETECTION SUCCEEDED
+                <div className="flex items-center justify-between mb-3">
+                  <div className="inline-block bg-accent text-primary px-2.5 py-0.5 text-[10px] font-mono font-black uppercase">
+                    ANPR DETECTION SUCCEEDED
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(!isEditing)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono font-bold bg-white/10 hover:bg-accent hover:text-primary text-accent border border-accent/40 transition-colors uppercase"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    <span>{isEditing ? "LOCK NUMBER" : "OFFICER EDIT"}</span>
+                  </button>
                 </div>
 
-                <div className="text-xs font-mono text-sage uppercase">EXTRACTED REGISTRATION PLATE</div>
-                <div className="font-heading text-4xl sm:text-5xl text-accent font-mono tracking-widest my-2">
-                  {result.registration_number}
+                <div className="text-xs font-mono text-sage uppercase flex items-center justify-between">
+                  <span>CONFIRMED REGISTRATION PLATE</span>
+                  {editablePlate !== result.registration_number && (
+                    <span className="text-[10px] text-accent font-bold">MANUALLY ADJUSTED</span>
+                  )}
                 </div>
+
+                {isEditing ? (
+                  <div className="my-2">
+                    <input
+                      type="text"
+                      value={editablePlate}
+                      onChange={(e) => setEditablePlate(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                      className="w-full bg-black/70 border-2 border-accent text-accent font-heading text-3xl sm:text-4xl px-3 py-2 font-mono tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-accent"
+                      autoFocus
+                      placeholder="e.g. HR71H0003"
+                    />
+                    <div className="text-[10px] font-mono text-sage/80 mt-1 flex items-center gap-1">
+                      <span>Tip: Press Tab or click Lock when done.</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div 
+                    onClick={() => setIsEditing(true)}
+                    className="font-heading text-4xl sm:text-5xl text-accent font-mono tracking-widest my-2 cursor-pointer hover:opacity-90 flex items-center justify-between group"
+                    title="Click to edit plate characters"
+                  >
+                    <span>{editablePlate || result.registration_number}</span>
+                    <Edit3 className="w-5 h-5 text-accent/40 group-hover:text-accent transition-colors" />
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between text-xs font-mono text-sage border-t border-gray-800 pt-3 mb-4">
                   <span>MODEL CONFIDENCE:</span>
@@ -304,11 +349,14 @@ export default function ANPRScanner() {
                       alt="Cropped License Plate"
                       className="max-h-16 w-auto max-w-full object-contain mx-auto border border-accent shadow-sm"
                     />
+                    <div className="mt-1.5 text-[10px] font-mono text-center text-sage/70">
+                      Cross-reference visual crop with detected text above.
+                    </div>
                   </div>
                 )}
 
                 <Button
-                  onClick={() => navigate(`/vehicle-verification?reg=${result.registration_number}`)}
+                  onClick={() => navigate(`/vehicle-verification?reg=${(editablePlate || result.registration_number).trim().toUpperCase()}`)}
                   variant="accent"
                   size="md"
                   className="w-full font-black text-sm"
