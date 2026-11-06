@@ -18,12 +18,13 @@ export default function Settings() {
 
   const handleTestSpeech = () => {
     setTestSpeechStatus(true);
+    const samplePlate = speechUtil.formatPlateForSpeech('KA01AB1234', currentLanguage);
     speechUtil.speak(
       currentLanguage === 'hi'
-        ? "रोडगार्ड आवाज सत्यापन प्रणाली सक्रिय है।"
+        ? `रोडगार्ड आवाज प्रणाली सक्रिय है। वाहन ${samplePlate} सत्यापित, सभी दस्तावेज़ वैध हैं।`
         : currentLanguage === 'kn'
-        ? "ರೋಡ್‌ಗಾರ್ಡ್ ಧ್ವನಿ ಪರಿಶೀಲನಾ ವ್ಯವಸ್ಥೆ ಸಕ್ರಿಯವಾಗಿದೆ."
-        : "RoadGuard voice alert system is fully active and operational.",
+        ? `ರೋಡ್‌ಗಾರ್ಡ್ ಧ್ವನಿ ವ್ಯವಸ್ಥೆ ಸಕ್ರಿಯವಾಗಿದೆ. ವಾಹನ ${samplePlate} ಪರಿಶೀಲಿಸಲಾಗಿದೆ, ಎಲ್ಲಾ ದಾಖಲೆಗಳು ಮಾನ್ಯವಾಗಿವೆ.`
+        : `RoadGuard voice alert system active. Vehicle ${samplePlate} verified. All documents valid.`,
       currentLanguage
     );
     setTimeout(() => setTestSpeechStatus(false), 3000);
