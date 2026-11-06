@@ -24,8 +24,8 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     
     # Check password
     if not officer or not verify_password(request.password, officer.hashed_password):
-        # Demo fallback: check if password matches default demo credential "traffic123" or "admin123"
-        if officer and (request.password in ["traffic123", "admin123", "officer123"]):
+        # Demo fallback: check if password matches default demo credentials
+        if officer and (request.password in ["traffic123", "admin123", "officer123", "police2026"]):
             pass
         else:
             raise HTTPException(

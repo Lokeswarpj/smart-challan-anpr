@@ -5,7 +5,7 @@ export const MOCK_OFFICERS = [
     name: "Sub-Inspector Ramesh Kumar",
     station: "Indiranagar Traffic BPS, Bengaluru",
     role: "officer",
-    password: "officer123"
+    password: "traffic123"
   },
   {
     id: 2,
@@ -13,7 +13,7 @@ export const MOCK_OFFICERS = [
     name: "Head Constable Lokesh Gowda",
     station: "Koramangala Traffic BPS, Bengaluru",
     role: "officer",
-    password: "officer123"
+    password: "traffic123"
   },
   {
     id: 3,
@@ -22,6 +22,15 @@ export const MOCK_OFFICERS = [
     station: "Traffic Police Central HQ, Bengaluru",
     role: "admin",
     password: "admin123"
+  },
+  {
+    id: 4,
+    badge_number: "KA-POL-2026",
+    name: "Inspector Lokeshwar P J",
+    station: "Indiranagar Traffic BPS, Bengaluru",
+    role: "officer",
+    password: "traffic123"
   }
 ];
+
 

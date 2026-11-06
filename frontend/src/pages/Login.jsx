@@ -174,7 +174,7 @@ export default function Login() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-sans">
             <button
               type="button"
-              onClick={() => autofillDemo('KA-POL-2026', 'police2026')}
+              onClick={() => autofillDemo('KA-POL-2026', 'traffic123')}
               className="p-2 border-2 border-primary bg-accent hover:bg-yellow-300 text-left transition-colors font-mono shadow-brutal-sm"
             >
               <div className="font-bold text-primary">KA-POL-2026</div>

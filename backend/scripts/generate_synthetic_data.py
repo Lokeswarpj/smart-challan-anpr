@@ -170,6 +170,13 @@ def seed_officers(db):
             "station": "Traffic Police Central HQ, Bengaluru",
             "role": "admin",
             "password": "admin123"
+        },
+        {
+            "badge_number": "KA-POL-2026",
+            "name": "Inspector Lokeshwar P J",
+            "station": "Indiranagar Traffic BPS, Bengaluru",
+            "role": "officer",
+            "password": "traffic123"
         }
     ]
     
