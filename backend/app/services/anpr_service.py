@@ -34,6 +34,12 @@ class ANPRService:
         self.use_gpu = torch.cuda.is_available()
         print(f"[ANPRService] Hardware Acceleration (CUDA): {self.use_gpu}")
 
+        # Optimize PyTorch CPU multi-threading
+        import os
+        cpu_threads = min(8, max(2, os.cpu_count() or 4))
+        torch.set_num_threads(cpu_threads)
+        print(f"[ANPRService] PyTorch CPU Compute Threads: {cpu_threads}")
+
         # 1. YOLOv8 Plate Detector
         self.detector = PlateDetector(weights_path=yolo_weights)
 
@@ -171,8 +177,8 @@ class ANPRService:
                                 best_text = cand_text
                                 best_conf = avg_conf
 
-                            # EARLY EXIT: If this pass yields a valid 10-character Indian plate format, stop immediately!
-                            if is_valid and mod >= 0.95 and len(corrected) == 10 and cmvr_bonus > 0:
+                            # EARLY EXIT: If this pass yields a valid Indian plate format (8 to 11 chars), stop immediately!
+                            if is_valid and mod >= 0.90 and (8 <= len(corrected) <= 11) and cmvr_bonus > 0:
                                 return best_text, best_conf
             except Exception as e:
                 print(f"[ANPRService] OCR pass warning: {e}")
@@ -245,14 +251,13 @@ class ANPRService:
         t2 = time.perf_counter()
         enhanced_gray, binarized = preprocess_plate(cropped_plate)
         
-        # Priority order: Enhanced Grayscale first, then Raw Cropped, then HSRP-trimmed, then Binarized
+        # Priority order: Enhanced Grayscale first, then HSRP-trimmed as resilient fallback
         h, w = cropped_plate.shape[:2]
-        ocr_images = [enhanced_gray, cropped_plate]
+        ocr_images = [enhanced_gray]
         if w > 80:
             hsrp_trimmed = cropped_plate[:, int(w * 0.10):]
             enhanced_trimmed, _ = preprocess_plate(hsrp_trimmed)
-            ocr_images.extend([hsrp_trimmed, enhanced_trimmed])
-        ocr_images.append(binarized)
+            ocr_images.append(enhanced_trimmed)
 
         t_prep = (time.perf_counter() - t2) * 1000
         telemetry_stages.append({
