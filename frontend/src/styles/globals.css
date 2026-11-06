@@ -86,6 +86,132 @@
   transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* =========================================================================
+   DARK MODE ENFORCEMENT & HIGH-CONTRAST PALETTE OVERRIDES
+   ========================================================================= */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #0E1310 !important;
+  color: #F8F9FA !important;
+}
+
+/* Dark mode borders: subtle dark-charcoal outline */
+.dark .border-primary,
+.dark header,
+.dark aside,
+.dark footer {
+  border-color: #2D3931 !important;
+}
+
+/* Dark mode brutalist shadows: realistic dark depth */
+.dark .shadow-brutal {
+  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 0.85) !important;
+}
+.dark .shadow-brutal-sm {
+  box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.85) !important;
+}
+
+/* Dark mode grid pattern */
+.dark .bg-grid-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(45, 57, 49, 0.45) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(45, 57, 49, 0.45) 1px, transparent 1px) !important;
+}
+
+/* Clean dark mode surfaces and cards */
+.dark .bg-white {
+  background-color: #171E19 !important;
+}
+
+.dark .bg-surface {
+  background-color: #121814 !important;
+}
+
+.dark .dark\:bg-surface {
+  background-color: #171E19 !important;
+}
+
+.dark .dark\:bg-surface-dark {
+  background-color: #101512 !important;
+}
+
+.dark header {
+  background-color: rgba(18, 24, 20, 0.95) !important;
+}
+
+.dark aside {
+  background-color: #121814 !important;
+}
+
+/* Dark mode typography */
+.dark .text-primary {
+  color: #F8F9FA !important;
+}
+
+.dark .text-secondary {
+  color: #B7C6C2 !important;
+}
+
+.dark .text-accent {
+  color: #FFE17C !important;
+}
+
+/* Keep accent badge and button text crisp black */
+.dark .bg-accent,
+.dark [class*="bg-accent"] {
+  background-color: #FFE17C !important;
+}
+
+.dark .bg-accent text,
+.dark .bg-accent span,
+.dark .bg-accent div,
+.dark button.bg-accent,
+.dark .bg-accent.text-primary,
+.dark .bg-accent .text-primary {
+  color: #171E19 !important;
+}
+
+/* Dark mode form controls */
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark select,
+.dark textarea {
+  background-color: #101512 !important;
+  color: #F8F9FA !important;
+  border-color: #2D3931 !important;
+}
+
+.dark input::placeholder {
+  color: #718096 !important;
+}
+
+/* Dark mode data tables */
+.dark table thead tr {
+  background-color: #101512 !important;
+  border-color: #2D3931 !important;
+}
+
+.dark table thead th {
+  color: #FFE17C !important;
+  border-color: #2D3931 !important;
+}
+
+.dark table tbody tr {
+  background-color: #171E19 !important;
+  border-color: #222C25 !important;
+}
+
+.dark table tbody tr:hover {
+  background-color: #1F2822 !important;
+}
+
+.dark table tbody td {
+  color: #E2E8F0 !important;
+  border-color: #222C25 !important;
+}
+
 /* Override aggressive browser autofill blue/yellow styling */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 

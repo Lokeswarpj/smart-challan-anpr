@@ -50,15 +50,15 @@ export default function Sidebar({ isOpen, onClose }) {
 
       <aside
         className={clsx(
-          'fixed top-0 bottom-0 left-0 z-40 w-72 bg-white dark:bg-surface border-r-2 border-primary flex flex-col justify-between transition-transform duration-300 lg:translate-x-0',
+          'fixed top-0 bottom-0 left-0 z-40 w-72 bg-white dark:bg-[#121814] border-r-2 border-primary dark:border-[#2D3931] flex flex-col justify-between transition-transform duration-300 lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Top Header */}
         <div>
-          <div className="h-20 px-6 border-b-2 border-primary flex items-center justify-between bg-white dark:bg-surface">
+          <div className="h-20 px-6 border-b-2 border-primary dark:border-[#2D3931] flex items-center justify-between bg-white dark:bg-[#121814]">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 bg-primary flex items-center justify-center border border-primary shadow-brutal-sm">
+              <div className="w-9 h-9 bg-primary flex items-center justify-center border border-primary dark:border-[#2D3931] shadow-brutal-sm">
                 <Shield className="w-5 h-5 text-accent" />
               </div>
               <div className="flex items-center">
@@ -87,7 +87,7 @@ export default function Sidebar({ isOpen, onClose }) {
                       'flex items-center gap-3.5 px-4 py-3 text-xs font-bold uppercase tracking-wider font-sans border transition-all duration-150',
                       isActive
                         ? 'bg-accent text-primary border-primary shadow-brutal-sm font-black translate-x-1'
-                        : 'text-secondary dark:text-gray-300 border-transparent hover:border-primary hover:bg-surface dark:hover:bg-gray-800'
+                        : 'text-secondary dark:text-gray-300 border-transparent hover:border-primary dark:hover:border-[#2D3931] hover:bg-surface dark:hover:bg-[#1C241F]'
                     )
                   }
                 >
@@ -100,9 +100,9 @@ export default function Sidebar({ isOpen, onClose }) {
         </div>
 
         {/* Bottom Officer Profile & Logout */}
-        <div className="p-4 border-t-2 border-primary bg-surface dark:bg-surface-dark space-y-3">
+        <div className="p-4 border-t-2 border-primary dark:border-[#2D3931] bg-surface dark:bg-[#101512] space-y-3">
           <div className="flex items-center gap-3 px-2">
-            <div className="w-10 h-10 bg-primary text-accent flex items-center justify-center font-heading text-lg border border-primary">
+            <div className="w-10 h-10 bg-primary text-accent flex items-center justify-center font-heading text-lg border border-primary dark:border-[#2D3931]">
               {officer?.name ? officer.name.charAt(0) : 'O'}
             </div>
             <div className="overflow-hidden">
@@ -117,7 +117,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase font-sans border border-primary bg-white hover:bg-danger hover:text-white transition-colors text-primary shadow-brutal-sm"
+            className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase font-sans border border-primary dark:border-[#2D3931] bg-white dark:bg-[#1C241F] hover:bg-danger dark:hover:bg-danger hover:text-white transition-colors text-primary dark:text-white shadow-brutal-sm"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>{t('nav.logout')}</span>

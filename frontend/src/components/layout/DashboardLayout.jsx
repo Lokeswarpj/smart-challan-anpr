@@ -10,7 +10,7 @@ export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { currentLanguage, changeLanguage } = useLanguage();
-  const { theme, setTheme, toggleOutdoor, isOutdoor } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { officer } = useAuth();
 
   useEffect(() => {
@@ -62,51 +62,51 @@ export default function DashboardLayout() {
           {/* Quick Controls */}
           <div className="flex items-center gap-2.5 sm:gap-3">
             {/* Language Selector */}
-            <div className="flex items-center border border-primary bg-white dark:bg-surface-dark p-0.5 shadow-brutal-sm">
+            <div className="flex items-center border border-primary dark:border-[#2D3931] bg-white dark:bg-[#101512] p-0.5 shadow-brutal-sm">
               <button
                 onClick={() => changeLanguage('en')}
-                className={`px-2 py-1 text-[11px] font-bold font-sans ${
-                  currentLanguage === 'en' ? 'bg-accent text-primary' : 'text-secondary hover:text-black'
+                className={`px-2 py-1 text-[11px] font-bold font-sans transition-colors ${
+                  currentLanguage === 'en'
+                    ? 'bg-accent text-primary'
+                    : 'text-secondary dark:text-sage hover:text-black dark:hover:text-white'
                 }`}
               >
                 EN
               </button>
               <button
                 onClick={() => changeLanguage('hi')}
-                className={`px-2 py-1 text-[11px] font-bold font-sans ${
-                  currentLanguage === 'hi' ? 'bg-accent text-primary' : 'text-secondary hover:text-black'
+                className={`px-2 py-1 text-[11px] font-bold font-sans transition-colors ${
+                  currentLanguage === 'hi'
+                    ? 'bg-accent text-primary'
+                    : 'text-secondary dark:text-sage hover:text-black dark:hover:text-white'
                 }`}
               >
                 हिन्दी
               </button>
               <button
                 onClick={() => changeLanguage('kn')}
-                className={`px-2 py-1 text-[11px] font-bold font-sans ${
-                  currentLanguage === 'kn' ? 'bg-accent text-primary' : 'text-secondary hover:text-black'
+                className={`px-2 py-1 text-[11px] font-bold font-sans transition-colors ${
+                  currentLanguage === 'kn'
+                    ? 'bg-accent text-primary'
+                    : 'text-secondary dark:text-sage hover:text-black dark:hover:text-white'
                 }`}
               >
                 ಕನ್ನಡ
               </button>
             </div>
 
-            {/* Outdoor High-Contrast Mode Toggle */}
-            <button
-              onClick={toggleOutdoor}
-              title="Toggle Outdoor Visibility Mode (Direct Sunlight)"
-              className={`p-2 border border-primary transition-all shadow-brutal-sm ${
-                isOutdoor ? 'bg-accent text-primary font-bold' : 'bg-white dark:bg-surface-dark hover:bg-surface'
-              }`}
-            >
-              <Sun className="w-4 h-4" />
-            </button>
-
-            {/* Dark Mode Toggle */}
+            {/* Single Unified Theme Toggle Button */}
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              title="Toggle Dark Mode"
-              className="p-2 border border-primary bg-white dark:bg-surface-dark hover:bg-surface shadow-brutal-sm"
+              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              aria-label="Toggle theme mode"
+              className="p-2 border border-primary dark:border-[#2D3931] bg-white dark:bg-[#101512] hover:bg-surface dark:hover:bg-[#1F2822] shadow-brutal-sm transition-all flex items-center justify-center group"
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-accent" /> : <Moon className="w-4 h-4 text-primary" />}
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-accent transition-transform duration-200 group-hover:rotate-45" />
+              ) : (
+                <Moon className="w-4 h-4 text-primary transition-transform duration-200 group-hover:-rotate-12" />
+              )}
             </button>
 
             {/* Officer Badge Pill */}

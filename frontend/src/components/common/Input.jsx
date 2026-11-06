@@ -30,7 +30,7 @@ export default function Input({
         <input
           id={inputId}
           className={clsx(
-            'w-full bg-white dark:bg-surface border border-primary dark:border-gray-600 text-primary dark:text-white px-3.5 py-2.5 text-sm font-sans transition-all duration-150 outline-none focus:ring-2 focus:ring-accent focus:border-primary shadow-brutal-sm',
+            'w-full bg-white dark:bg-[#121814] border border-primary dark:border-[#2D3931] text-primary dark:text-white px-3.5 py-2.5 text-sm font-sans transition-all duration-150 outline-none focus:ring-2 focus:ring-accent focus:border-primary shadow-brutal-sm placeholder-gray-400 dark:placeholder-gray-500',
             Icon && 'pl-10',
             error && 'border-danger focus:ring-danger',
             className

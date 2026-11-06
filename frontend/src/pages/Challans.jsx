@@ -110,7 +110,7 @@ export default function Challans() {
       />
 
       {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-surface border-2 border-primary shadow-brutal p-6 flex flex-col md:flex-row gap-4 justify-between items-center">
+      <div className="bg-white dark:bg-[#171E19] border-2 border-primary dark:border-[#2D3931] shadow-brutal p-6 flex flex-col md:flex-row gap-4 justify-between items-center">
         <div className="w-full md:w-80">
           <Input
             placeholder="Search plate, challan ID, rule..."
@@ -125,10 +125,10 @@ export default function Challans() {
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
-              className={`px-4 py-2 font-heading text-xs tracking-wider border-2 border-primary transition-all ${
+              className={`px-4 py-2 font-heading text-xs tracking-wider border-2 border-primary dark:border-[#2D3931] transition-all ${
                 statusFilter === st
                   ? 'bg-accent text-primary font-black shadow-brutal-sm'
-                  : 'bg-white dark:bg-surface text-secondary hover:bg-surface'
+                  : 'bg-white dark:bg-[#121814] text-secondary dark:text-sage hover:bg-surface dark:hover:bg-[#1F2822]'
               }`}
             >
               {st}
@@ -138,10 +138,10 @@ export default function Challans() {
       </div>
 
       {/* Challans Table */}
-      <div className="bg-white dark:bg-surface border-2 border-primary shadow-brutal overflow-x-auto">
+      <div className="bg-white dark:bg-[#171E19] border-2 border-primary dark:border-[#2D3931] shadow-brutal overflow-x-auto">
         <table className="w-full text-left text-xs font-sans">
           <thead>
-            <tr className="bg-primary text-white border-b-2 border-primary font-heading tracking-wider">
+            <tr className="bg-primary dark:bg-[#101512] text-white border-b-2 border-primary dark:border-[#2D3931] font-heading tracking-wider">
               <th className="p-3">CHALLAN ID</th>
               <th className="p-3">REGISTRATION</th>
               <th className="p-3">VIOLATION / RULE SECTION</th>
@@ -154,7 +154,7 @@ export default function Challans() {
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
             {filteredChallans.map((c) => (
-              <tr key={c.id} className="hover:bg-surface/80">
+              <tr key={c.id} className="hover:bg-surface/80 dark:hover:bg-[#1F2822]">
                 <td className="p-3 font-mono font-bold text-primary dark:text-accent">
                   {c.id}
                 </td>

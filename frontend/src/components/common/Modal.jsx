@@ -28,7 +28,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
 
       {/* Modal Dialog */}
       <div
-        className={`relative w-full ${maxWidth} bg-white dark:bg-surface border-2 border-primary shadow-brutal z-10 overflow-hidden transform transition-all max-h-[90vh] flex flex-col`}
+        className={`relative w-full ${maxWidth} bg-white dark:bg-[#171E19] border-2 border-primary dark:border-[#2D3931] shadow-brutal z-10 overflow-hidden transform transition-all max-h-[90vh] flex flex-col text-primary dark:text-white`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-primary bg-accent">
