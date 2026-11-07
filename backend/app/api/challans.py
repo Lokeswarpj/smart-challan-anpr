@@ -340,6 +340,7 @@ def dispatch_challan(
 
     target_phone = req.phone_number or (challan.vehicle.owner_phone if challan.vehicle else "")
     dispatch_msg = ""
+    is_success = True
 
     if channel in ["sms", "both"] and target_phone:
         sms_body = (
@@ -348,10 +349,11 @@ def dispatch_challan(
             f"Due date: {challan.due_date}. Pay online: https://echallan.parivahan.gov.in"
         )
         sent, detail = send_carrier_sms(target_phone, sms_body)
+        is_success = sent
         if sent:
             dispatch_msg = detail
         else:
-            dispatch_msg = f"SMS notice dispatched to {target_phone}. Status: {detail}"
+            dispatch_msg = f"{detail}. (Note: Fast2SMS requires a one-time INR 100 wallet recharge to unlock automated API sending. Use 'Phone SMS App' or 'WhatsApp' for free instant delivery)."
     else:
         dispatch_msg = f"Digital notice successfully dispatched via {channel.upper()} to registered contact ({target_phone or 'N/A'})."
 
@@ -372,7 +374,7 @@ def dispatch_challan(
     db.commit()
 
     return DispatchResponse(
-        success=True,
+        success=is_success,
         message=dispatch_msg,
         dispatch_status=new_status
     )

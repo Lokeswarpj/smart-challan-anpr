@@ -438,7 +438,11 @@ export default function Challans() {
                         : 'bg-red-50 dark:bg-red-950/60 border-danger text-danger dark:text-red-300'
                     }`}
                   >
-                    <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary dark:text-accent" />
+                    {smsResult.success ? (
+                      <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary dark:text-accent" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-danger" />
+                    )}
                     <div className="space-y-1 flex-1">
                       <div className="flex items-center justify-between">
                         <span className="font-heading font-black uppercase tracking-wider text-[11px]">

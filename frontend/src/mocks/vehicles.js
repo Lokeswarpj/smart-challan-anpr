@@ -213,7 +213,7 @@ export const MOCK_VEHICLES = [
   {
     registration_number: "DL04CC9999",
     owner_name: "Vikram Malhotra",
-    owner_phone: "+91 98110 54321",
+    owner_phone: "+91 8524994488",
     owner_email: "vikram.m@example.com",
     vehicle_class: "Motor Car (LMV)",
     maker_model: "Mahindra XUV700 AX7",
@@ -273,7 +273,7 @@ export const MOCK_VEHICLES = [
   {
     registration_number: "KA05NB3321",
     owner_name: "Kiran Gowda",
-    owner_phone: "+91 94480 33221",
+    owner_phone: "+91 8524994488",
     owner_email: "kiran.gowda@example.com",
     vehicle_class: "Motorcycle (2-Wheeler)",
     maker_model: "Royal Enfield Classic 350",
@@ -483,7 +483,7 @@ export const MOCK_VEHICLES = [
   {
     registration_number: "KA53Z9000",
     owner_name: "Deepak Choudhury",
-    owner_phone: "+91 99001 77889",
+    owner_phone: "+91 8524994488",
     owner_email: "deepak.c@example.com",
     vehicle_class: "Motorcycle (2-Wheeler)",
     maker_model: "Ather 450X Gen 3",
