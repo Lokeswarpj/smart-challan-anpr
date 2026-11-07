@@ -398,6 +398,7 @@ export default function VehicleVerification() {
               </div>
             </div>
 
+            {/* Compliance Badge & Action Buttons */}
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 onClick={() => speechUtil.announceVehicle(vehicle, currentLanguage)}
@@ -407,11 +408,59 @@ export default function VehicleVerification() {
               >
                 VOICE ALERT
               </Button>
-              <Link to={`/challans/new?reg=${vehicle.registration_number}`}>
-                <Button variant="danger" size="sm" icon={Receipt}>
-                  ISSUE CHALLAN
-                </Button>
-              </Link>
+
+              {/* Strict Statutory Document Audit Display */}
+              {vehicle.documents && (
+                (() => {
+                  const hasExpired =
+                    vehicle.documents.rc?.status === 'expired' ||
+                    vehicle.documents.insurance?.status === 'expired' ||
+                    vehicle.documents.puc?.status === 'expired' ||
+                    vehicle.documents.road_tax?.status === 'pending';
+
+                  const is100PercentCompliant =
+                    !hasExpired &&
+                    vehicle.documents.rc?.status === 'valid' &&
+                    vehicle.documents.insurance?.status === 'valid' &&
+                    vehicle.documents.puc?.status === 'valid' &&
+                    vehicle.documents.road_tax?.status === 'paid';
+
+                  let targetViolationParam = '';
+                  if (vehicle.documents.puc?.status === 'expired') targetViolationParam = '&violation=VIO-PUC-EXP';
+                  else if (vehicle.documents.insurance?.status === 'expired') targetViolationParam = '&violation=VIO-INS-EXP';
+                  else if (vehicle.documents.rc?.status === 'expired') targetViolationParam = '&violation=VIO-RC-EXP';
+                  else if (vehicle.documents.road_tax?.status === 'pending') targetViolationParam = '&violation=VIO-TAX-PENDING';
+
+                  if (is100PercentCompliant) {
+                    return (
+                      <>
+                        <span className="px-3 py-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500 font-mono text-xs font-bold uppercase flex items-center gap-1.5 shadow-brutal-sm">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          ALL DOCUMENTS VALID (100% COMPLIANT)
+                        </span>
+                        <Link to={`/challans/new?reg=${vehicle.registration_number}`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            icon={Receipt}
+                            className="border-accent text-accent hover:bg-accent hover:text-primary text-xs font-bold shadow-brutal-sm"
+                          >
+                            REPORT ON-ROAD OFFENSE
+                          </Button>
+                        </Link>
+                      </>
+                    );
+                  }
+
+                  return (
+                    <Link to={`/challans/new?reg=${vehicle.registration_number}${targetViolationParam}`}>
+                      <Button variant="danger" size="sm" icon={Receipt} className="animate-pulse shadow-brutal-sm font-bold">
+                        ISSUE NON-COMPLIANCE CHALLAN
+                      </Button>
+                    </Link>
+                  );
+                })()
+              )}
             </div>
           </div>
 

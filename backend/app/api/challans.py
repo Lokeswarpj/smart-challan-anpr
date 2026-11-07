@@ -76,7 +76,17 @@ def create_challan(
     officer: Officer = Depends(get_current_officer)
 ):
     clean_plate = req.registration_number.replace(" ", "").replace("-", "").upper()
-    vehicle = db.query(Vehicle).filter(Vehicle.registration_number == clean_plate).first()
+    vehicle = (
+        db.query(Vehicle)
+        .options(
+            joinedload(Vehicle.rc_record),
+            joinedload(Vehicle.insurance_record),
+            joinedload(Vehicle.puc_record),
+            joinedload(Vehicle.tax_record)
+        )
+        .filter(Vehicle.registration_number == clean_plate)
+        .first()
+    )
     
     if not vehicle:
         raise HTTPException(
@@ -94,15 +104,71 @@ def create_challan(
     violation_title = req.violation_title or req.violation_type or "Traffic Non-Compliance"
     rule_section = req.rule_section or "Sec 177 Motor Vehicles Act, 1988"
     violation_code = req.violation_code or "SEC-177"
-    if "insurance" in violation_title.lower():
+    if "insurance" in violation_title.lower() or violation_code == "VIO-INS-EXP":
         rule_section = "Sec 196 Motor Vehicles Act, 1988 (Uninsured Driving)"
         violation_code = "SEC-196"
-    elif "puc" in violation_title.lower() or "emission" in violation_title.lower():
+    elif "puc" in violation_title.lower() or "emission" in violation_title.lower() or "pollution" in violation_title.lower() or violation_code == "VIO-PUC-EXP":
         rule_section = "Sec 190(2) Motor Vehicles Act, 1988 (Air Pollution)"
         violation_code = "SEC-190-2"
-    elif "rc" in violation_title.lower() or "registration" in violation_title.lower():
+    elif "rc" in violation_title.lower() or "registration" in violation_title.lower() or violation_code == "VIO-RC-EXP":
         rule_section = "Sec 192 Motor Vehicles Act, 1988 (Unregistered Vehicle)"
         violation_code = "SEC-192"
+    elif "road tax" in violation_title.lower() or "tax" in violation_title.lower() or violation_code in ("VIO-TAX-PENDING", "VIO-TAX-DEF"):
+        rule_section = "Motor Vehicles Taxation Act (Unpaid Road Tax)"
+        violation_code = "SEC-ROAD-TAX"
+
+    # --- STATUTORY DOCUMENT AUDIT ENFORCEMENT ---
+    # Strictly forbid issuing non-compliance citations against vehicles whose documents are valid in central records
+    today = date.today()
+
+    # 1. Pollution Under Control (PUC)
+    if (
+        violation_code in ("SEC-190-2", "VIO-PUC-EXP")
+        or "puc" in violation_title.lower()
+        or "pollution" in violation_title.lower()
+        or "emission" in violation_title.lower()
+    ):
+        if vehicle.puc_record and vehicle.puc_record.status.lower() == "valid" and vehicle.puc_record.expiry_date >= today:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Statutory Audit Error: Vehicle '{clean_plate}' has a VALID Pollution Under Control (PUC) certificate in central RTO records until {vehicle.puc_record.expiry_date}. Cannot issue false citation."
+            )
+
+    # 2. Vehicle Insurance
+    if (
+        violation_code in ("SEC-196", "VIO-INS-EXP")
+        or "insurance" in violation_title.lower()
+        or "uninsured" in violation_title.lower()
+    ):
+        if vehicle.insurance_record and vehicle.insurance_record.status.lower() == "valid" and vehicle.insurance_record.expiry_date >= today:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Statutory Audit Error: Vehicle '{clean_plate}' has a VALID Insurance policy in central RTO records until {vehicle.insurance_record.expiry_date}. Cannot issue false citation."
+            )
+
+    # 3. Registration Certificate (RC)
+    if (
+        violation_code in ("SEC-192", "VIO-RC-EXP")
+        or "unregistered" in violation_title.lower()
+        or ("registration" in violation_title.lower() and "expired" in violation_title.lower())
+    ):
+        if vehicle.rc_record and vehicle.rc_record.status.lower() == "valid" and vehicle.rc_record.expiry_date >= today:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Statutory Audit Error: Vehicle '{clean_plate}' has a VALID Registration Certificate (RC) in central RTO records until {vehicle.rc_record.expiry_date}. Cannot issue false citation."
+            )
+
+    # 4. Road Tax
+    if (
+        violation_code in ("SEC-ROAD-TAX", "VIO-TAX-PENDING", "VIO-TAX-DEF")
+        or "road tax" in violation_title.lower()
+        or "taxation" in violation_title.lower()
+    ):
+        if vehicle.tax_record and vehicle.tax_record.status.lower() == "paid" and vehicle.tax_record.valid_until >= today:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Statutory Audit Error: Vehicle '{clean_plate}' has Road Tax PAID in central RTO records until {vehicle.tax_record.valid_until}. Cannot issue false citation."
+            )
 
     due_days = req.due_days or 15
     due_date = date.today() + timedelta(days=due_days)

@@ -1,5 +1,6 @@
 import apiClient from './apiClient';
 import { MOCK_CHALLANS } from '../mocks/challans';
+import { MOCK_VEHICLES } from '../mocks/vehicles';
 
 // Keep track of dynamically added challans in session memory
 let activeChallans = [...MOCK_CHALLANS];
@@ -19,6 +20,43 @@ export const challanService = {
       const response = await apiClient.post('/challans', challanData);
       return response.data;
     } catch (err) {
+      // If backend responded with an explicit validation error (e.g. 400 Bad Request or 404),
+      // re-throw immediately to alert the officer on screen.
+      if (err.response?.status === 400 || err.response?.status === 404 || err.response?.data?.detail) {
+        throw new Error(err.response?.data?.detail || 'Validation error from RTO registry.');
+      }
+
+      // Offline / Mock fallback validation: strictly prevent issuing false document violations
+      const cleanPlate = (challanData.registration_number || '').replace(/[\s-]/g, '').toUpperCase();
+      const mockVeh = MOCK_VEHICLES.find(
+        (v) => v.registration_number.replace(/[\s-]/g, '').toUpperCase() === cleanPlate
+      );
+
+      if (mockVeh && mockVeh.documents) {
+        const vCode = challanData.violation_code || '';
+        const vTitle = (challanData.violation_title || '').toLowerCase();
+
+        if ((vCode === 'VIO-PUC-EXP' || vTitle.includes('puc') || vTitle.includes('pollution')) &&
+            mockVeh.documents.puc?.status === 'valid') {
+          throw new Error(`Statutory Audit Error: Vehicle ${cleanPlate} has a VALID Pollution Under Control (PUC) certificate in central records until ${mockVeh.documents.puc.expiry_date}. Cannot issue false citation.`);
+        }
+
+        if ((vCode === 'VIO-INS-EXP' || vTitle.includes('insurance') || vTitle.includes('uninsured')) &&
+            mockVeh.documents.insurance?.status === 'valid') {
+          throw new Error(`Statutory Audit Error: Vehicle ${cleanPlate} has a VALID Insurance policy in central records until ${mockVeh.documents.insurance.expiry_date}. Cannot issue false citation.`);
+        }
+
+        if ((vCode === 'VIO-RC-EXP' || vTitle.includes('registration') || vTitle.includes('unregistered')) &&
+            mockVeh.documents.rc?.status === 'valid') {
+          throw new Error(`Statutory Audit Error: Vehicle ${cleanPlate} has a VALID Registration Certificate (RC) in central records until ${mockVeh.documents.rc.expiry_date}. Cannot issue false citation.`);
+        }
+
+        if ((vCode === 'VIO-TAX-PENDING' || vTitle.includes('road tax')) &&
+            mockVeh.documents.road_tax?.status === 'paid') {
+          throw new Error(`Statutory Audit Error: Vehicle ${cleanPlate} has Road Tax PAID in central records until ${mockVeh.documents.road_tax.valid_until}. Cannot issue false citation.`);
+        }
+      }
+
       const newChallan = {
         id: `CH-202611-${challanData.registration_number.slice(0, 4)}-${Math.floor(1000 + Math.random() * 9000)}`,
         ...challanData,

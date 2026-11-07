@@ -82,59 +82,74 @@ export const MOCK_CHALLANS = [
 ];
 
 export const VIOLATION_TYPES = [
-  {
-    code: "VIO-PUC-EXP",
-    title: "Expired Pollution Under Control (PUC) Certificate",
-    section: "Section 190(2) MV Act",
-    fine: 2000
-  },
-  {
-    code: "VIO-INS-EXP",
-    title: "Driving Uninsured Vehicle (No Valid Insurance)",
-    section: "Section 196 MV Act",
-    fine: 2000
-  },
-  {
-    code: "VIO-RC-EXP",
-    title: "Operating Vehicle Without Valid Registration (RC)",
-    section: "Section 192 MV Act",
-    fine: 5000
-  },
-  {
-    code: "VIO-TAX-PENDING",
-    title: "Failure to pay Motor Vehicle / Road Tax",
-    section: "Section 177 / Motor Vehicle Taxation Act",
-    fine: 3000
-  },
+  // On-Road Moving Violations (Observed in traffic by field officer)
   {
     code: "VIO-SIGNAL-JUMP",
     title: "Violation of Mandatory Traffic Signals (Signal Jumping)",
     section: "Section 119/177 MV Act",
-    fine: 1000
-  },
-  {
-    code: "VIO-NO-HELMET",
-    title: "Riding Two-Wheeler Without Protective Headgear",
-    section: "Section 194D MV Act",
-    fine: 1000
+    fine: 1000,
+    category: "moving"
   },
   {
     code: "VIO-NO-SEATBELT",
     title: "Driving Without Fastened Safety Seatbelt",
     section: "Section 194B MV Act",
-    fine: 1000
+    fine: 1000,
+    category: "moving"
   },
   {
     code: "VIO-OVERSPEED",
     title: "Exceeding Prescribed Speed Limit (Over-speeding)",
     section: "Section 112/183 MV Act",
-    fine: 1500
+    fine: 1500,
+    category: "moving"
+  },
+  {
+    code: "VIO-NO-HELMET",
+    title: "Riding Two-Wheeler Without Protective Headgear",
+    section: "Section 194D MV Act",
+    fine: 1000,
+    category: "moving"
   },
   {
     code: "VIO-PHONE-DRIVE",
     title: "Use of Handheld Mobile Phone While Driving",
     section: "Section 184(c) MV Act",
-    fine: 1500
+    fine: 1500,
+    category: "moving"
+  },
+  // Statutory Document Violations (Enforced strictly based on Central RTO Registry status)
+  {
+    code: "VIO-PUC-EXP",
+    title: "Expired Pollution Under Control (PUC) Certificate",
+    section: "Section 190(2) MV Act",
+    fine: 2000,
+    category: "statutory",
+    documentKey: "puc"
+  },
+  {
+    code: "VIO-INS-EXP",
+    title: "Driving Uninsured Vehicle (No Valid Insurance)",
+    section: "Section 196 MV Act",
+    fine: 2000,
+    category: "statutory",
+    documentKey: "insurance"
+  },
+  {
+    code: "VIO-RC-EXP",
+    title: "Operating Vehicle Without Valid Registration (RC)",
+    section: "Section 192 MV Act",
+    fine: 5000,
+    category: "statutory",
+    documentKey: "rc"
+  },
+  {
+    code: "VIO-TAX-PENDING",
+    title: "Failure to pay Motor Vehicle / Road Tax",
+    section: "Section 177 / Motor Vehicle Taxation Act",
+    fine: 3000,
+    category: "statutory",
+    documentKey: "road_tax"
   }
 ];
 
