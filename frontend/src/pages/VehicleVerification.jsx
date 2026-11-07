@@ -425,11 +425,13 @@ export default function VehicleVerification() {
                     vehicle.documents.puc?.status === 'valid' &&
                     vehicle.documents.road_tax?.status === 'paid';
 
-                  let targetViolationParam = '';
-                  if (vehicle.documents.puc?.status === 'expired') targetViolationParam = '&violation=VIO-PUC-EXP';
-                  else if (vehicle.documents.insurance?.status === 'expired') targetViolationParam = '&violation=VIO-INS-EXP';
-                  else if (vehicle.documents.rc?.status === 'expired') targetViolationParam = '&violation=VIO-RC-EXP';
-                  else if (vehicle.documents.road_tax?.status === 'pending') targetViolationParam = '&violation=VIO-TAX-PENDING';
+                  const expiredCodes = [];
+                  if (vehicle.documents.puc?.status === 'expired') expiredCodes.push('VIO-PUC-EXP');
+                  if (vehicle.documents.insurance?.status === 'expired') expiredCodes.push('VIO-INS-EXP');
+                  if (vehicle.documents.rc?.status === 'expired') expiredCodes.push('VIO-RC-EXP');
+                  if (vehicle.documents.road_tax?.status === 'pending') expiredCodes.push('VIO-TAX-PENDING');
+
+                  const targetViolationParam = expiredCodes.length > 0 ? `&violations=${expiredCodes.join(',')}` : '';
 
                   if (is100PercentCompliant) {
                     return (
@@ -455,7 +457,9 @@ export default function VehicleVerification() {
                   return (
                     <Link to={`/challans/new?reg=${vehicle.registration_number}${targetViolationParam}`}>
                       <Button variant="danger" size="sm" icon={Receipt} className="animate-pulse shadow-brutal-sm font-bold">
-                        ISSUE NON-COMPLIANCE CHALLAN
+                        {expiredCodes.length > 1
+                          ? `ISSUE COMBINED CHALLAN (${expiredCodes.length} VIOLATIONS)`
+                          : 'ISSUE NON-COMPLIANCE CHALLAN'}
                       </Button>
                     </Link>
                   );

@@ -7,7 +7,11 @@ import {
   ArrowLeft,
   ShieldCheck,
   AlertTriangle,
-  Lock
+  Lock,
+  Plus,
+  Trash2,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
 import Button from '../components/common/Button';
@@ -87,7 +91,7 @@ export default function CreateChallan() {
   const [ownerName, setOwnerName] = useState('');
   const [vehicle, setVehicle] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
-  const [selectedViolationCode, setSelectedViolationCode] = useState(VIOLATION_TYPES[0].code);
+  const [selectedViolationCodes, setSelectedViolationCodes] = useState([]);
   const [locationName, setLocationName] = useState('Indiranagar 100ft Road Signal, Bengaluru');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -98,10 +102,13 @@ export default function CreateChallan() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const selectedViolation =
-    VIOLATION_TYPES.find((v) => v.code === selectedViolationCode) || VIOLATION_TYPES[0];
+  // Selected violation objects
+  const selectedViolations = VIOLATION_TYPES.filter((v) =>
+    selectedViolationCodes.includes(v.code)
+  );
 
-  const currentEligibility = getViolationEligibility(selectedViolation, vehicle);
+  // Cumulative fine amount
+  const totalFineAmount = selectedViolations.reduce((sum, v) => sum + (v.fine || 0), 0);
 
   // Check if all 4 core documents are completely compliant
   const isAllDocumentsCompliant = Boolean(
@@ -113,8 +120,8 @@ export default function CreateChallan() {
     vehicle.documents.road_tax?.status === 'paid'
   );
 
-  // Handle vehicle lookup and auto-select appropriate violation
-  const fetchVehicleAndAudit = async (plateNumber, requestedViolation) => {
+  // Handle vehicle lookup and auto-select appropriate violation(s)
+  const fetchVehicleAndAudit = async (plateNumber, requestedCodes = []) => {
     const clean = (plateNumber || '').replace(/[\s-]/g, '').toUpperCase();
     if (!clean) return;
 
@@ -126,35 +133,35 @@ export default function CreateChallan() {
         setOwnerName(v.owner_name);
       }
 
-      // If a specific violation was requested from the URL, check if it's allowed
-      if (requestedViolation) {
-        const targetVio = VIOLATION_TYPES.find((item) => item.code === requestedViolation);
-        if (targetVio) {
-          const elig = getViolationEligibility(targetVio, v);
-          if (elig.allowed) {
-            setSelectedViolationCode(requestedViolation);
-            return;
+      // If specific violations were requested from URL (single or comma-separated)
+      let initialCodes = [];
+      if (requestedCodes && requestedCodes.length > 0) {
+        requestedCodes.forEach((code) => {
+          const targetVio = VIOLATION_TYPES.find((item) => item.code === code);
+          if (targetVio) {
+            const elig = getViolationEligibility(targetVio, v);
+            if (elig.allowed) {
+              initialCodes.push(code);
+            }
           }
-        }
+        });
       }
 
-      // Check if the currently selected violation is locked/disallowed for this vehicle
-      const currentElig = getViolationEligibility(selectedViolation, v);
-      if (!currentElig.allowed) {
-        // Find an expired document violation if one exists, otherwise default to first moving violation
-        let newCode = null;
-        if (v.documents?.puc?.status === 'expired') newCode = 'VIO-PUC-EXP';
-        else if (v.documents?.insurance?.status === 'expired') newCode = 'VIO-INS-EXP';
-        else if (v.documents?.rc?.status === 'expired') newCode = 'VIO-RC-EXP';
-        else if (v.documents?.road_tax?.status === 'pending') newCode = 'VIO-TAX-PENDING';
+      // If no valid requested codes from URL, auto-detect eligible expired documents
+      if (initialCodes.length === 0 && v && v.documents) {
+        if (v.documents.puc?.status === 'expired') initialCodes.push('VIO-PUC-EXP');
+        if (v.documents.insurance?.status === 'expired') initialCodes.push('VIO-INS-EXP');
+        if (v.documents.rc?.status === 'expired') initialCodes.push('VIO-RC-EXP');
+        if (v.documents.road_tax?.status === 'pending') initialCodes.push('VIO-TAX-PENDING');
 
-        if (!newCode) {
-          // All documents are clean, select first moving violation
+        // If completely compliant, pre-select the first moving violation
+        if (initialCodes.length === 0) {
           const firstMoving = VIOLATION_TYPES.find((item) => item.category === 'moving');
-          newCode = firstMoving ? firstMoving.code : VIOLATION_TYPES[0].code;
+          if (firstMoving) initialCodes.push(firstMoving.code);
         }
-        setSelectedViolationCode(newCode);
       }
+
+      setSelectedViolationCodes(initialCodes);
     } catch {
       setVehicle(null);
     } finally {
@@ -165,18 +172,55 @@ export default function CreateChallan() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const reg = params.get('reg');
-    const vio = params.get('violation');
+    const vioParam = params.get('violations') || params.get('violation') || '';
+    const requested = vioParam ? vioParam.split(',').map((s) => s.trim()) : [];
+
     if (reg) {
       setRegistrationNumber(reg);
-      fetchVehicleAndAudit(reg, vio);
+      fetchVehicleAndAudit(reg, requested);
+    } else {
+      // Default to first moving violation if no vehicle is loaded yet
+      setSelectedViolationCodes(['VIO-SIGNAL-JUMP']);
     }
   }, [location.search]);
 
-  // When registration number is typed manually, auto-query on blur or valid format length
+  // When registration number is typed manually, auto-query on blur
   const handlePlateBlur = () => {
     if (registrationNumber.trim().length >= 5) {
-      fetchVehicleAndAudit(registrationNumber);
+      fetchVehicleAndAudit(registrationNumber, selectedViolationCodes);
     }
+  };
+
+  // Toggle a violation on or off
+  const toggleViolation = (code) => {
+    setError('');
+    const targetVio = VIOLATION_TYPES.find((v) => v.code === code);
+    if (!targetVio) return;
+
+    if (selectedViolationCodes.includes(code)) {
+      setSelectedViolationCodes((prev) => prev.filter((c) => c !== code));
+      return;
+    }
+
+    // Check if adding this violation is legally allowed
+    const elig = getViolationEligibility(targetVio, vehicle);
+    if (!elig.allowed) {
+      setError(`ACTION PROHIBITED: ${elig.reason}`);
+      return;
+    }
+
+    setSelectedViolationCodes((prev) => [...prev, code]);
+  };
+
+  const handleSelectAllExpired = () => {
+    if (!vehicle || !vehicle.documents) return;
+    const expired = [];
+    if (vehicle.documents.puc?.status === 'expired') expired.push('VIO-PUC-EXP');
+    if (vehicle.documents.insurance?.status === 'expired') expired.push('VIO-INS-EXP');
+    if (vehicle.documents.rc?.status === 'expired') expired.push('VIO-RC-EXP');
+    if (vehicle.documents.road_tax?.status === 'pending') expired.push('VIO-TAX-PENDING');
+
+    setSelectedViolationCodes((prev) => Array.from(new Set([...prev, ...expired])));
   };
 
   const handleSubmit = async (e) => {
@@ -188,26 +232,37 @@ export default function CreateChallan() {
       return;
     }
 
-    // Statutory audit check
-    const eligibility = getViolationEligibility(selectedViolation, vehicle);
-    if (!eligibility.allowed) {
-      setError(`ACTION PROHIBITED: ${eligibility.reason} Central traffic policy strictly forbids issuing false document non-compliance penalties on compliant vehicles.`);
+    if (selectedViolationCodes.length === 0) {
+      setError('Please select at least one violation offense to issue the challan.');
       return;
+    }
+
+    // Verify all selected violations are legally allowed
+    for (const v of selectedViolations) {
+      const eligibility = getViolationEligibility(v, vehicle);
+      if (!eligibility.allowed) {
+        setError(`ACTION PROHIBITED: ${eligibility.reason} Central traffic policy strictly forbids issuing false document non-compliance penalties on compliant vehicles.`);
+        return;
+      }
     }
 
     setLoading(true);
     try {
+      const combinedCodes = selectedViolations.map((v) => v.code).join('+');
+      const combinedTitles = selectedViolations.map((v) => v.title).join(' + ');
+      const combinedSections = selectedViolations.map((v) => v.section).join(' + ');
+
       await challanService.createChallan({
         registration_number: registrationNumber.toUpperCase().trim(),
         owner_name: ownerName || 'Vehicle Owner on Record',
-        violation_code: selectedViolation.code,
-        violation_title: selectedViolation.title,
-        rule_section: selectedViolation.section,
-        fine_amount: selectedViolation.fine,
+        violation_code: combinedCodes,
+        violation_title: combinedTitles,
+        rule_section: combinedSections,
+        fine_amount: totalFineAmount,
         location: locationName,
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        officer_name: officer?.name || 'Sub-Inspector Ramesh Kumar',
-        officer_badge: officer?.badge_number || 'KA-POL-1001',
+        officer_name: officer?.name || 'Inspector Lokeshwar P J',
+        officer_badge: officer?.badge_number || 'KA-POL-2026',
         notes: notes,
       });
 
@@ -233,7 +288,7 @@ export default function CreateChallan() {
         </Link>
         <PageHeader
           title="ISSUE DIGITAL CHALLAN"
-          subtitle="Generate an enforceable statutory traffic fine with embedded payment QR code."
+          subtitle="Generate an enforceable statutory traffic fine with multi-offense support and embedded payment QR code."
         />
       </div>
 
@@ -263,23 +318,32 @@ export default function CreateChallan() {
               </span>
             </div>
             <p className="text-xs font-sans text-emerald-700 dark:text-emerald-300/90 leading-relaxed">
-              Central RTO records verify that Registration (RC), Insurance, Pollution (PUC), and Road Tax for <strong className="font-mono text-emerald-900 dark:text-emerald-200">{registrationNumber}</strong> are all active and up to date. Document non-compliance fines are <strong>strictly locked</strong> to prevent false citations. You may only record on-road moving violations (e.g. Signal Jumping, Speeding, Seatbelt) witnessed on duty.
+              Central RTO records verify that Registration (RC), Insurance, Pollution (PUC), and Road Tax for <strong className="font-mono text-emerald-900 dark:text-emerald-200">{registrationNumber}</strong> are all active and up to date. Document non-compliance fines are <strong>strictly locked</strong>. You may select one or more on-road moving violations observed on duty.
             </p>
           </div>
         </div>
       )}
 
       {vehicle && !isAllDocumentsCompliant && (
-        <div className="p-4 bg-amber-50 dark:bg-[#251b10] border-2 border-amber-600 dark:border-amber-500 shadow-brutal-sm flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-          <div className="space-y-1">
-            <div className="font-heading text-sm font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300">
-              STATUTORY DOCUMENT NON-COMPLIANCE DETECTED
+        <div className="p-4 bg-amber-50 dark:bg-[#251b10] border-2 border-amber-600 dark:border-amber-500 shadow-brutal-sm flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+            <div className="space-y-1">
+              <div className="font-heading text-sm font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300">
+                STATUTORY DOCUMENT NON-COMPLIANCE DETECTED
+              </div>
+              <p className="text-xs font-sans text-amber-800 dark:text-amber-300/90 leading-relaxed">
+                Central RTO records indicate expired or pending statutory documents for vehicle <strong className="font-mono">{registrationNumber}</strong>. You can check multiple non-compliance offenses below to issue a single combined challan.
+              </p>
             </div>
-            <p className="text-xs font-sans text-amber-800 dark:text-amber-300/90 leading-relaxed">
-              Central RTO records indicate expired or pending statutory documents for vehicle <strong className="font-mono">{registrationNumber}</strong>. Eligible document non-compliance violations have been unlocked below.
-            </p>
           </div>
+          <button
+            type="button"
+            onClick={handleSelectAllExpired}
+            className="px-3 py-1 text-xs font-mono font-bold bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-600 dark:border-amber-400 hover:bg-amber-300 transition-colors shadow-brutal-sm flex-shrink-0"
+          >
+            SELECT ALL EXPIRED
+          </button>
         </div>
       )}
 
@@ -287,7 +351,7 @@ export default function CreateChallan() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Input
             label="Vehicle Registration Number"
-            placeholder="e.g. KA01AB1234"
+            placeholder="e.g. KA05NB3321"
             value={registrationNumber}
             onChange={(e) => setRegistrationNumber(e.target.value.toUpperCase())}
             onBlur={handlePlateBlur}
@@ -297,87 +361,209 @@ export default function CreateChallan() {
 
           <Input
             label="Registered Owner Name"
-            placeholder="e.g. Aryan Maharaj"
+            placeholder="e.g. Viraj Tiwari"
             value={ownerName}
             onChange={(e) => setOwnerName(e.target.value)}
           />
         </div>
 
-        {/* Violation Selection with Audit Grouping */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold uppercase tracking-wider text-primary dark:text-gray-200">
-              Violation Category & Statutory Rule
-            </label>
-            {lookupLoading && (
-              <span className="text-[10px] font-mono text-secondary animate-pulse">
-                Auditing RTO registry...
+        {/* Multi-Violation Selection Container */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-primary/20">
+            <div>
+              <label className="text-sm font-heading font-black uppercase tracking-wider text-primary dark:text-white block">
+                VIOLATION OFFENSES (SELECT ONE OR MULTIPLE)
+              </label>
+              <span className="text-xs text-secondary dark:text-gray-400 font-sans">
+                Select all applicable moving or statutory offenses to generate a single consolidated challan.
               </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 text-xs font-mono font-bold bg-accent text-primary border border-primary shadow-brutal-sm">
+                {selectedViolationCodes.length} SELECTED
+              </span>
+              {selectedViolationCodes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedViolationCodes([])}
+                  className="text-xs font-mono text-danger underline hover:text-red-700"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Cumulative Total Fine Breakdown Card */}
+          <div className="p-4 bg-surface dark:bg-surface-dark border-2 border-primary shadow-brutal-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-mono font-bold text-secondary dark:text-gray-400 uppercase block">
+                  CONSOLIDATED PENALTY BREAKDOWN
+                </span>
+                <span className="text-sm font-bold text-primary dark:text-white">
+                  {selectedViolationCodes.length === 0
+                    ? 'No violations selected yet. Check boxes below.'
+                    : `${selectedViolationCodes.length} Offense${selectedViolationCodes.length > 1 ? 's' : ''} Combined`}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-gray-500 font-mono block">TOTAL FINE AMOUNT</span>
+                <span className="font-heading text-3xl text-danger font-black tracking-tight">
+                  ₹{totalFineAmount.toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+
+            {/* Selected Chips List */}
+            {selectedViolations.length > 0 && (
+              <div className="pt-2 border-t border-primary/10 flex flex-wrap gap-2">
+                {selectedViolations.map((v) => (
+                  <div
+                    key={v.code}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-bold bg-white dark:bg-surface border border-primary shadow-brutal-sm"
+                  >
+                    <span className="text-primary dark:text-white">{v.title}</span>
+                    <span className="text-danger font-black">₹{v.fine}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleViolation(v.code)}
+                      className="text-gray-400 hover:text-danger ml-1"
+                      title="Remove violation"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
-          <select
-            value={selectedViolationCode}
-            onChange={(e) => setSelectedViolationCode(e.target.value)}
-            className="w-full bg-white dark:bg-surface border-2 border-primary dark:border-gray-600 px-3.5 py-2.5 text-sm font-sans font-medium outline-none focus:ring-2 focus:ring-accent shadow-brutal-sm"
-          >
-            <optgroup label="─── ON-ROAD MOVING VIOLATIONS (WITNESSED IN TRAFFIC) ───">
-              {movingViolations.map((v) => (
-                <option key={v.code} value={v.code}>
-                  {v.title} — {v.section} (₹{v.fine})
-                </option>
-              ))}
-            </optgroup>
+          {/* Group 1: Statutory Document Offenses */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-xs font-mono font-black uppercase text-secondary dark:text-gray-300 tracking-wider">
+                ─── STATUTORY DOCUMENT OFFENSES (CENTRAL RTO AUDITED) ───
+              </span>
+              {lookupLoading && (
+                <span className="text-[10px] font-mono text-secondary animate-pulse">
+                  Auditing RTO registry...
+                </span>
+              )}
+            </div>
 
-            <optgroup label="─── STATUTORY DOCUMENT VIOLATIONS (CENTRAL RTO AUDITED) ───">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {statutoryViolations.map((v) => {
                 const elig = getViolationEligibility(v, vehicle);
+                const isChecked = selectedViolationCodes.includes(v.code);
+
                 return (
-                  <option
+                  <div
                     key={v.code}
-                    value={v.code}
-                    disabled={!elig.allowed}
-                    className={!elig.allowed ? 'text-gray-400 bg-gray-100 dark:bg-gray-800' : 'font-bold text-danger'}
+                    onClick={() => elig.allowed && toggleViolation(v.code)}
+                    className={`p-3.5 border-2 transition-all flex items-start justify-between gap-3 ${
+                      !elig.allowed
+                        ? 'opacity-50 bg-gray-100 dark:bg-gray-800/40 border-gray-300 dark:border-gray-700 cursor-not-allowed'
+                        : isChecked
+                        ? 'bg-amber-50 dark:bg-amber-950/40 border-primary dark:border-accent shadow-brutal-sm cursor-pointer'
+                        : 'bg-white dark:bg-surface border-primary/40 hover:border-primary cursor-pointer'
+                    }`}
                   >
-                    {!elig.allowed
-                      ? `🔒 [LOCKED: DOCUMENT VALID IN RTO] ${v.title}`
-                      : `⚠️ ${v.title} — ${v.section} (₹${v.fine})`}
-                  </option>
+                    <div className="flex items-start gap-2.5">
+                      <div className="mt-0.5">
+                        {!elig.allowed ? (
+                          <Lock className="w-4 h-4 text-gray-400" />
+                        ) : isChecked ? (
+                          <CheckSquare className="w-4 h-4 text-primary dark:text-accent" />
+                        ) : (
+                          <Square className="w-4 h-4 text-gray-400" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-heading text-xs font-bold text-primary dark:text-white leading-tight">
+                          {v.title}
+                        </div>
+                        <div className="text-[10px] font-mono text-secondary dark:text-gray-400 mt-0.5">
+                          {v.section}
+                        </div>
+                        {!elig.allowed && (
+                          <span className="inline-block mt-1 text-[9px] font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.5 border border-emerald-400">
+                            VALID IN RTO — LOCKED
+                          </span>
+                        )}
+                        {elig.allowed && vehicle && (
+                          <span className="inline-block mt-1 text-[9px] font-mono font-bold text-danger bg-red-100 dark:bg-red-950/60 px-1.5 py-0.5 border border-danger">
+                            NON-COMPLIANT IN RTO
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-right flex-shrink-0">
+                      <span className="font-heading text-base font-bold text-danger">
+                        ₹{v.fine}
+                      </span>
+                    </div>
+                  </div>
                 );
               })}
-            </optgroup>
-          </select>
-        </div>
-
-        {/* Dynamic Penalty Details Box with Audit Warning */}
-        <div className={`p-4 border-2 ${currentEligibility.allowed ? 'bg-surface dark:bg-surface-dark border-primary' : 'bg-red-50 dark:bg-[#201010] border-danger'}`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-xs font-bold text-primary dark:text-white uppercase flex items-center gap-1.5">
-                {!currentEligibility.allowed && <Lock className="w-3.5 h-3.5 text-danger" />}
-                {selectedViolation.title}
-              </span>
-              <span className="text-[11px] font-mono text-secondary dark:text-gray-400 block mt-0.5">
-                {selectedViolation.section}
-              </span>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] text-gray-500 font-mono block">FINE AMOUNT</span>
-              <span className={`font-heading text-2xl font-bold ${currentEligibility.allowed ? 'text-danger' : 'text-gray-400 line-through'}`}>
-                ₹{selectedViolation.fine}
-              </span>
             </div>
           </div>
 
-          {!currentEligibility.allowed && (
-            <div className="mt-3 pt-3 border-t border-danger/30 text-xs font-mono font-bold text-danger flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>CITATION BLOCKED: {currentEligibility.reason}</span>
+          {/* Group 2: On-Road Moving Offenses */}
+          <div className="space-y-2 pt-2">
+            <span className="text-xs font-mono font-black uppercase text-secondary dark:text-gray-300 tracking-wider">
+              ─── ON-ROAD MOVING OFFENSES (WITNESSED IN TRAFFIC) ───
+            </span>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {movingViolations.map((v) => {
+                const isChecked = selectedViolationCodes.includes(v.code);
+
+                return (
+                  <div
+                    key={v.code}
+                    onClick={() => toggleViolation(v.code)}
+                    className={`p-3.5 border-2 transition-all flex items-start justify-between gap-3 cursor-pointer ${
+                      isChecked
+                        ? 'bg-amber-50 dark:bg-amber-950/40 border-primary dark:border-accent shadow-brutal-sm'
+                        : 'bg-white dark:bg-surface border-primary/40 hover:border-primary'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="mt-0.5">
+                        {isChecked ? (
+                          <CheckSquare className="w-4 h-4 text-primary dark:text-accent" />
+                        ) : (
+                          <Square className="w-4 h-4 text-gray-400" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-heading text-xs font-bold text-primary dark:text-white leading-tight">
+                          {v.title}
+                        </div>
+                        <div className="text-[10px] font-mono text-secondary dark:text-gray-400 mt-0.5">
+                          {v.section}
+                        </div>
+                        <span className="inline-block mt-1 text-[9px] font-mono font-bold text-secondary dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 border border-gray-300 dark:border-gray-700">
+                          ROAD TRAFFIC
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right flex-shrink-0">
+                      <span className="font-heading text-base font-bold text-danger">
+                        ₹{v.fine}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
           <Input
             label="Checkpoint / Violation Location"
             value={locationName}
@@ -406,21 +592,33 @@ export default function CreateChallan() {
           />
         </div>
 
-        <div className="pt-4 border-t border-primary/20 flex justify-end gap-3">
-          <Link to="/challans">
-            <Button variant="outline" size="md">CANCEL</Button>
-          </Link>
-          <Button
-            type="submit"
-            variant="accent"
-            size="md"
-            loading={loading}
-            disabled={!currentEligibility.allowed}
-            icon={Receipt}
-            className={!currentEligibility.allowed ? 'opacity-50 cursor-not-allowed' : ''}
-          >
-            CONFIRM & DISPATCH CHALLAN
-          </Button>
+        <div className="pt-4 border-t border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-xs font-mono text-secondary dark:text-gray-400">
+            {selectedViolationCodes.length > 0 ? (
+              <span>
+                Consolidating <strong>{selectedViolationCodes.length}</strong> offense(s) into single legal challan.
+              </span>
+            ) : (
+              <span className="text-danger font-bold">Please select at least one offense.</span>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 w-full sm:w-auto">
+            <Link to="/challans">
+              <Button variant="outline" size="md">CANCEL</Button>
+            </Link>
+            <Button
+              type="submit"
+              variant="accent"
+              size="md"
+              loading={loading}
+              disabled={selectedViolationCodes.length === 0}
+              icon={Receipt}
+              className={selectedViolationCodes.length === 0 ? 'opacity-50 cursor-not-allowed' : 'shadow-brutal-sm'}
+            >
+              CONFIRM & DISPATCH CHALLAN (₹{totalFineAmount.toLocaleString('en-IN')})
+            </Button>
+          </div>
         </div>
       </form>
     </div>

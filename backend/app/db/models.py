@@ -103,9 +103,9 @@ class Challan(Base):
     registration_number = Column(String(20), ForeignKey("vehicles.registration_number"), nullable=False)
     officer_id = Column(Integer, ForeignKey("officers.id"), nullable=False)
     
-    violation_code = Column(String(30), nullable=False)
-    violation_title = Column(String(150), nullable=False)
-    rule_section = Column(String(80), nullable=False)
+    violation_code = Column(String(100), nullable=False)
+    violation_title = Column(String(300), nullable=False)
+    rule_section = Column(String(200), nullable=False)
     fine_amount = Column(Float, nullable=False)
     location = Column(String(150), nullable=False)
     

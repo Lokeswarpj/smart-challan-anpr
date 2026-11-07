@@ -36,22 +36,22 @@ export const challanService = {
         const vCode = challanData.violation_code || '';
         const vTitle = (challanData.violation_title || '').toLowerCase();
 
-        if ((vCode === 'VIO-PUC-EXP' || vTitle.includes('puc') || vTitle.includes('pollution')) &&
+        if ((vCode.includes('VIO-PUC-EXP') || vTitle.includes('puc') || vTitle.includes('pollution')) &&
             mockVeh.documents.puc?.status === 'valid') {
           throw new Error(`Statutory Audit Error: Vehicle ${cleanPlate} has a VALID Pollution Under Control (PUC) certificate in central records until ${mockVeh.documents.puc.expiry_date}. Cannot issue false citation.`);
         }
 
-        if ((vCode === 'VIO-INS-EXP' || vTitle.includes('insurance') || vTitle.includes('uninsured')) &&
+        if ((vCode.includes('VIO-INS-EXP') || vTitle.includes('insurance') || vTitle.includes('uninsured')) &&
             mockVeh.documents.insurance?.status === 'valid') {
           throw new Error(`Statutory Audit Error: Vehicle ${cleanPlate} has a VALID Insurance policy in central records until ${mockVeh.documents.insurance.expiry_date}. Cannot issue false citation.`);
         }
 
-        if ((vCode === 'VIO-RC-EXP' || vTitle.includes('registration') || vTitle.includes('unregistered')) &&
+        if ((vCode.includes('VIO-RC-EXP') || vTitle.includes('registration') || vTitle.includes('unregistered')) &&
             mockVeh.documents.rc?.status === 'valid') {
           throw new Error(`Statutory Audit Error: Vehicle ${cleanPlate} has a VALID Registration Certificate (RC) in central records until ${mockVeh.documents.rc.expiry_date}. Cannot issue false citation.`);
         }
 
-        if ((vCode === 'VIO-TAX-PENDING' || vTitle.includes('road tax')) &&
+        if ((vCode.includes('VIO-TAX-PENDING') || vTitle.includes('road tax')) &&
             mockVeh.documents.road_tax?.status === 'paid') {
           throw new Error(`Statutory Audit Error: Vehicle ${cleanPlate} has Road Tax PAID in central records until ${mockVeh.documents.road_tax.valid_until}. Cannot issue false citation.`);
         }

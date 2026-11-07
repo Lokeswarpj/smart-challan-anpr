@@ -102,20 +102,25 @@ def create_challan(
 
     # Determine title / section if using violation_type
     violation_title = req.violation_title or req.violation_type or "Traffic Non-Compliance"
-    rule_section = req.rule_section or "Sec 177 Motor Vehicles Act, 1988"
     violation_code = req.violation_code or "SEC-177"
-    if "insurance" in violation_title.lower() or violation_code == "VIO-INS-EXP":
-        rule_section = "Sec 196 Motor Vehicles Act, 1988 (Uninsured Driving)"
-        violation_code = "SEC-196"
-    elif "puc" in violation_title.lower() or "emission" in violation_title.lower() or "pollution" in violation_title.lower() or violation_code == "VIO-PUC-EXP":
-        rule_section = "Sec 190(2) Motor Vehicles Act, 1988 (Air Pollution)"
-        violation_code = "SEC-190-2"
-    elif "rc" in violation_title.lower() or "registration" in violation_title.lower() or violation_code == "VIO-RC-EXP":
-        rule_section = "Sec 192 Motor Vehicles Act, 1988 (Unregistered Vehicle)"
-        violation_code = "SEC-192"
-    elif "road tax" in violation_title.lower() or "tax" in violation_title.lower() or violation_code in ("VIO-TAX-PENDING", "VIO-TAX-DEF"):
-        rule_section = "Motor Vehicles Taxation Act (Unpaid Road Tax)"
-        violation_code = "SEC-ROAD-TAX"
+    rule_section = req.rule_section
+
+    # Default rule_section if not provided by caller
+    if not rule_section:
+        if "insurance" in violation_title.lower() or violation_code == "VIO-INS-EXP":
+            rule_section = "Sec 196 Motor Vehicles Act, 1988 (Uninsured Driving)"
+            violation_code = "SEC-196"
+        elif "puc" in violation_title.lower() or "emission" in violation_title.lower() or "pollution" in violation_title.lower() or violation_code == "VIO-PUC-EXP":
+            rule_section = "Sec 190(2) Motor Vehicles Act, 1988 (Air Pollution)"
+            violation_code = "SEC-190-2"
+        elif "rc" in violation_title.lower() or "registration" in violation_title.lower() or violation_code == "VIO-RC-EXP":
+            rule_section = "Sec 192 Motor Vehicles Act, 1988 (Unregistered Vehicle)"
+            violation_code = "SEC-192"
+        elif "road tax" in violation_title.lower() or "tax" in violation_title.lower() or violation_code in ("VIO-TAX-PENDING", "VIO-TAX-DEF"):
+            rule_section = "Motor Vehicles Taxation Act (Unpaid Road Tax)"
+            violation_code = "SEC-ROAD-TAX"
+        else:
+            rule_section = "Sec 177 Motor Vehicles Act, 1988"
 
     # --- STATUTORY DOCUMENT AUDIT ENFORCEMENT ---
     # Strictly forbid issuing non-compliance citations against vehicles whose documents are valid in central records
@@ -124,6 +129,7 @@ def create_challan(
     # 1. Pollution Under Control (PUC)
     if (
         violation_code in ("SEC-190-2", "VIO-PUC-EXP")
+        or "VIO-PUC-EXP" in violation_code
         or "puc" in violation_title.lower()
         or "pollution" in violation_title.lower()
         or "emission" in violation_title.lower()
@@ -137,6 +143,7 @@ def create_challan(
     # 2. Vehicle Insurance
     if (
         violation_code in ("SEC-196", "VIO-INS-EXP")
+        or "VIO-INS-EXP" in violation_code
         or "insurance" in violation_title.lower()
         or "uninsured" in violation_title.lower()
     ):
@@ -149,6 +156,7 @@ def create_challan(
     # 3. Registration Certificate (RC)
     if (
         violation_code in ("SEC-192", "VIO-RC-EXP")
+        or "VIO-RC-EXP" in violation_code
         or "unregistered" in violation_title.lower()
         or ("registration" in violation_title.lower() and "expired" in violation_title.lower())
     ):
@@ -161,6 +169,7 @@ def create_challan(
     # 4. Road Tax
     if (
         violation_code in ("SEC-ROAD-TAX", "VIO-TAX-PENDING", "VIO-TAX-DEF")
+        or "VIO-TAX-PENDING" in violation_code
         or "road tax" in violation_title.lower()
         or "taxation" in violation_title.lower()
     ):
@@ -169,6 +178,11 @@ def create_challan(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Statutory Audit Error: Vehicle '{clean_plate}' has Road Tax PAID in central RTO records until {vehicle.tax_record.valid_until}. Cannot issue false citation."
             )
+
+    # Bound string lengths safely for database storage
+    violation_title = violation_title[:295]
+    rule_section = rule_section[:195]
+    violation_code = violation_code[:95]
 
     due_days = req.due_days or 15
     due_date = date.today() + timedelta(days=due_days)
