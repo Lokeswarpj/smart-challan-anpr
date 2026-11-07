@@ -17,7 +17,8 @@ import {
   Smartphone,
   Send,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
 import Button from '../components/common/Button';
@@ -33,12 +34,24 @@ export default function Challans() {
   const [selectedChallan, setSelectedChallan] = useState(null);
   const [dispatchMessage, setDispatchMessage] = useState('');
   const [showSmsPreview, setShowSmsPreview] = useState(false);
-  const [demoPhone, setDemoPhone] = useState('');
+  const [demoPhone, setDemoPhone] = useState('8524994488');
   const [copySuccess, setCopySuccess] = useState(false);
+  const [isDispatchingSms, setIsDispatchingSms] = useState(false);
+  const [smsResult, setSmsResult] = useState(null);
 
   useEffect(() => {
     challanService.getChallans().then(setChallans);
   }, []);
+
+  useEffect(() => {
+    if (selectedChallan) {
+      const p = selectedChallan.owner_phone
+        ? selectedChallan.owner_phone.replace(/[^0-9]/g, '').slice(-10)
+        : '8524994488';
+      setDemoPhone(p || '8524994488');
+      setSmsResult(null);
+    }
+  }, [selectedChallan]);
 
   const filteredChallans = challans.filter((c) => {
     const matchesSearch =
@@ -58,18 +71,35 @@ export default function Challans() {
 
   const handleDispatch = async (channel) => {
     if (!selectedChallan) return;
-    setDispatchMessage(`Dispatching via ${channel.toUpperCase()}...`);
-    const targetPhone = demoPhone || selectedChallan.owner_phone;
-    const res = await challanService.dispatchReceipt(selectedChallan.id, channel, targetPhone);
-    setDispatchMessage(res.message);
-    const updated = await challanService.getChallans();
-    setChallans(updated);
-
     if (channel === 'sms') {
-      setShowSmsPreview(true);
+      setIsDispatchingSms(true);
+      setSmsResult(null);
     }
+    const targetPhone = demoPhone || selectedChallan.owner_phone || '8524994488';
+    setDispatchMessage(`Dispatching via ${channel.toUpperCase()} to ${targetPhone}...`);
 
-    setTimeout(() => setDispatchMessage(''), 5000);
+    try {
+      const res = await challanService.dispatchReceipt(selectedChallan.id, channel, targetPhone);
+      setDispatchMessage(res.message);
+      if (channel === 'sms') {
+        setSmsResult({ success: res.success, message: res.message });
+        setShowSmsPreview(true);
+      }
+      const updated = await challanService.getChallans();
+      setChallans(updated);
+      setSelectedChallan((prev) => (prev ? { ...prev, dispatch_status: `sent_${channel}` } : null));
+    } catch (e) {
+      const errMsg = e.message || 'Dispatch request failed';
+      setDispatchMessage(`Dispatch error: ${errMsg}`);
+      if (channel === 'sms') {
+        setSmsResult({ success: false, message: errMsg });
+      }
+    } finally {
+      if (channel === 'sms') {
+        setIsDispatchingSms(false);
+      }
+      setTimeout(() => setDispatchMessage(''), 8000);
+    }
   };
 
   const getSmsMessageText = (challan) => {
@@ -86,13 +116,24 @@ export default function Challans() {
 
   const handleSendWhatsApp = () => {
     if (!selectedChallan) return;
-    const cleanNumber = (demoPhone || selectedChallan.owner_phone || '')
+    const cleanNumber = (demoPhone || selectedChallan.owner_phone || '8524994488')
       .replace(/[^0-9]/g, '')
       .replace(/^0+/, '');
     const finalNumber = cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
     const text = encodeURIComponent(getSmsMessageText(selectedChallan));
     const url = `https://wa.me/${finalNumber}?text=${text}`;
     window.open(url, '_blank');
+  };
+
+  const handleDirectSms = () => {
+    if (!selectedChallan) return;
+    const cleanNumber = (demoPhone || selectedChallan.owner_phone || '8524994488')
+      .replace(/[^0-9]/g, '')
+      .slice(-10);
+    const text = encodeURIComponent(getSmsMessageText(selectedChallan));
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const delimiter = isIOS ? '&' : '?';
+    window.location.href = `sms:+91${cleanNumber}${delimiter}body=${text}`;
   };
 
   return (
@@ -336,35 +377,83 @@ export default function Challans() {
                       className="px-2.5 py-1.5 border border-primary text-xs font-mono w-full max-w-[180px] bg-white dark:bg-surface"
                     />
                   </div>
-                  <div className="flex gap-2 w-full sm:w-auto justify-end">
+                  <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
                     <button
                       type="button"
                       onClick={handleCopySms}
-                      className="px-3 py-1.5 text-xs font-mono font-bold border border-primary bg-white dark:bg-surface hover:bg-surface transition-colors flex items-center gap-1 shadow-brutal-sm"
+                      className="px-3 py-1.5 text-xs font-mono font-bold border border-primary bg-white dark:bg-surface hover:bg-surface transition-colors flex items-center gap-1 shadow-brutal-sm cursor-pointer"
                     >
                       <Copy className="w-3.5 h-3.5" />
                       {copySuccess ? 'COPIED!' : 'COPY TEXT'}
                     </button>
+
                     <button
                       type="button"
+                      disabled={isDispatchingSms}
                       onClick={() => handleDispatch('sms')}
-                      className="px-3 py-1.5 text-xs font-mono font-bold border border-primary bg-primary text-accent hover:bg-black transition-colors flex items-center gap-1 shadow-brutal-sm"
+                      className="px-3.5 py-1.5 text-xs font-mono font-bold border border-primary bg-primary text-accent hover:bg-black transition-colors flex items-center gap-1.5 shadow-brutal-sm disabled:opacity-50 cursor-pointer"
                       title="Dispatch real carrier SMS via Fast2SMS gateway"
                     >
-                      <Send className="w-3.5 h-3.5" />
-                      DISPATCH CARRIER SMS
+                      {isDispatchingSms ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>SENDING CARRIER SMS...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5" />
+                          <span>DISPATCH CARRIER SMS</span>
+                        </>
+                      )}
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={handleDirectSms}
+                      className="px-3 py-1.5 text-xs font-mono font-bold border border-primary bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-1 shadow-brutal-sm cursor-pointer"
+                      title="Open native SMS Messaging app on your phone / PC with pre-filled notice"
+                    >
+                      <Smartphone className="w-3.5 h-3.5" />
+                      PHONE SMS APP
+                    </button>
+
                     <button
                       type="button"
                       onClick={handleSendWhatsApp}
-                      className="px-3 py-1.5 text-xs font-mono font-black border border-primary bg-green-500 text-white hover:bg-green-600 transition-colors flex items-center gap-1 shadow-brutal-sm"
+                      className="px-3 py-1.5 text-xs font-mono font-black border border-primary bg-green-500 text-white hover:bg-green-600 transition-colors flex items-center gap-1 shadow-brutal-sm cursor-pointer"
                       title="Open WhatsApp notice pre-filled to this number"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
-                      DISPATCH ON WHATSAPP
+                      WHATSAPP
                     </button>
                   </div>
                 </div>
+
+                {/* Instant Inline Carrier Gateway Response Feedback */}
+                {smsResult && (
+                  <div
+                    className={`p-3.5 border-2 text-xs font-mono flex items-start gap-2.5 transition-all shadow-brutal-sm ${
+                      smsResult.success
+                        ? 'bg-amber-100 dark:bg-amber-950/60 border-primary text-primary dark:text-amber-200'
+                        : 'bg-red-50 dark:bg-red-950/60 border-danger text-danger dark:text-red-300'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary dark:text-accent" />
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-heading font-black uppercase tracking-wider text-[11px]">
+                          GATEWAY TELEMETRY FEEDBACK
+                        </span>
+                        <span className="text-[10px] opacity-75 font-mono">
+                          {new Date().toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <p className="font-sans text-xs font-medium leading-relaxed">
+                        {smsResult.message}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
