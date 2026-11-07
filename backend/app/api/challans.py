@@ -245,8 +245,12 @@ def send_carrier_sms(phone_number: str, message: str) -> Tuple[bool, str]:
         if data.get("return") is True:
             return True, f"Real carrier SMS delivered to +91 {clean_digits} via Fast2SMS (ID: {data.get('request_id', 'OK')})"
         else:
-            err_msg = data.get("message", ["Unknown gateway response"])[0]
-            return False, f"Fast2SMS API returned: {err_msg}"
+            raw_msg = data.get("message", "Unknown gateway response")
+            if isinstance(raw_msg, list):
+                err_msg = raw_msg[0] if raw_msg else "Unknown error"
+            else:
+                err_msg = str(raw_msg)
+            return False, f"Fast2SMS API notice: {err_msg}"
     except Exception as e:
         return False, f"SMS Gateway connection notice: {str(e)}"
 

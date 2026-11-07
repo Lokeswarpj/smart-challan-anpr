@@ -2,7 +2,7 @@ export const MOCK_VEHICLES = [
   {
     registration_number: "HR71H0003",
     owner_name: "Vikramaditya Singhania",
-    owner_phone: "+91 98765 43210",
+    owner_phone: "+91 8524994488",
     owner_email: "vikram.singhania@mercedes-owner.in",
     vehicle_class: "Motor Car (LMV)",
     maker_model: "Mercedes-Benz GLE 450 4MATIC",
@@ -63,7 +63,7 @@ export const MOCK_VEHICLES = [
   {
     registration_number: "KA01AB1234",
     owner_name: "Rahul Sharma",
-    owner_phone: "+91 98450 12345",
+    owner_phone: "+91 8524994488",
     owner_email: "rahul.sharma@example.com",
     vehicle_class: "Motor Car (LMV)",
     maker_model: "Tata Nexon Creative 1.2 Petrol",
