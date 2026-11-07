@@ -4,7 +4,12 @@ import en from './en.json';
 import hi from './hi.json';
 import kn from './kn.json';
 
-const savedLanguage = localStorage.getItem('roadguard_lang') || 'en';
+let savedLanguage = 'en';
+try {
+  savedLanguage = localStorage.getItem('roadguard_lang') || 'en';
+} catch (e) {
+  savedLanguage = 'en';
+}
 
 i18n
   .use(initReactI18next)

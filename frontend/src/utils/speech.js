@@ -8,33 +8,7 @@ let cachedVoices = [];
 let voicesInitialized = false;
 const PREFERRED_VOICE_KEY = 'roadguard_preferred_voice';
 
-// Safely initialize voices once without infinite loop risk
-if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-  try {
-    const initVoices = () => {
-      try {
-        if (!window.speechSynthesis) return;
-        const list = window.speechSynthesis.getVoices();
-        if (Array.isArray(list) && list.length > 0) {
-          cachedVoices = list;
-          voicesInitialized = true;
-          // Unhook handler to prevent Chromium infinite recursive loops
-          window.speechSynthesis.onvoiceschanged = null;
-        }
-      } catch (err) {
-        // Safe fallback
-      }
-    };
-
-    initVoices();
-    if (!voicesInitialized && window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = initVoices;
-    }
-  } catch (e) {
-    console.warn('Speech synthesis initialization skipped:', e);
-  }
-}
-
+// Cached voices loaded lazily upon request without top-level execution
 export const speechUtil = {
   /**
    * Retrieves all available voices from the browser safely

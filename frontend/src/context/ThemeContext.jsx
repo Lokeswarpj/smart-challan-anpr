@@ -4,7 +4,11 @@ const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
-    return localStorage.getItem('roadguard_theme') || 'light';
+    try {
+      return localStorage.getItem('roadguard_theme') || 'light';
+    } catch {
+      return 'light';
+    }
   });
 
   useEffect(() => {
@@ -16,7 +20,9 @@ export function ThemeProvider({ children }) {
     } else if (theme === 'outdoor') {
       root.classList.add('outdoor-mode');
     }
-    localStorage.setItem('roadguard_theme', theme);
+    try {
+      localStorage.setItem('roadguard_theme', theme);
+    } catch {}
   }, [theme]);
 
   const setTheme = (newTheme) => {

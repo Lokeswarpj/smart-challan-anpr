@@ -5,13 +5,19 @@ const LanguageContext = createContext(null);
 
 export function LanguageProvider({ children }) {
   const [currentLanguage, setCurrentLanguage] = useState(() => {
-    return localStorage.getItem('roadguard_lang') || 'en';
+    try {
+      return localStorage.getItem('roadguard_lang') || 'en';
+    } catch {
+      return 'en';
+    }
   });
 
   const changeLanguage = (lang) => {
     i18n.changeLanguage(lang);
     setCurrentLanguage(lang);
-    localStorage.setItem('roadguard_lang', lang);
+    try {
+      localStorage.setItem('roadguard_lang', lang);
+    } catch {}
   };
 
   return (

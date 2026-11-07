@@ -34,8 +34,17 @@ export const authService = {
   },
 
   getCurrentOfficer() {
-    const data = localStorage.getItem('roadguard_officer');
-    return data ? JSON.parse(data) : null;
+    try {
+      const data = localStorage.getItem('roadguard_officer');
+      if (!data || data === 'undefined' || data === 'null') return null;
+      return JSON.parse(data);
+    } catch (e) {
+      console.warn('Invalid officer data in localStorage, clearing:', e);
+      try {
+        localStorage.removeItem('roadguard_officer');
+      } catch {}
+      return null;
+    }
   },
 
   logout() {
