@@ -184,6 +184,21 @@ def create_challan(
     rule_section = rule_section[:195]
     violation_code = violation_code[:95]
 
+    # Idempotency & Rapid Double-Submission Debounce (60-second window)
+    recent_duplicate = (
+        db.query(Challan)
+        .options(joinedload(Challan.vehicle), joinedload(Challan.officer))
+        .filter(
+            Challan.registration_number == clean_plate,
+            Challan.violation_code == violation_code,
+            Challan.officer_id == officer.id,
+            Challan.issued_at >= datetime.utcnow() - timedelta(seconds=60)
+        )
+        .first()
+    )
+    if recent_duplicate:
+        return build_challan_response(recent_duplicate)
+
     due_days = req.due_days or 15
     due_date = date.today() + timedelta(days=due_days)
 

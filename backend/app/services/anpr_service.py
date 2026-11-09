@@ -6,6 +6,7 @@ Integrates YOLOv8 Plate Localization, OpenCV Preprocessing, EasyOCR Extraction, 
 
 import time
 import base64
+import os
 import re
 import cv2
 import numpy as np
@@ -35,7 +36,6 @@ class ANPRService:
         print(f"[ANPRService] Hardware Acceleration (CUDA): {self.use_gpu}")
 
         # Optimize PyTorch CPU multi-threading
-        import os
         cpu_threads = min(8, max(2, os.cpu_count() or 4))
         torch.set_num_threads(cpu_threads)
         print(f"[ANPRService] PyTorch CPU Compute Threads: {cpu_threads}")
@@ -43,9 +43,23 @@ class ANPRService:
         # 1. YOLOv8 Plate Detector
         self.detector = PlateDetector(weights_path=yolo_weights)
 
-        # 2. EasyOCR Reader (English alphanumeric whitelist)
+        # 2. EasyOCR Reader (English alphanumeric whitelist, local offline models)
         print("[ANPRService] Initializing EasyOCR Reader...")
-        self.ocr_reader = easyocr.Reader(['en'], gpu=self.use_gpu)
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        model_dir = os.path.join(base_dir, ".EasyOCR", "model")
+        user_dir = os.path.join(base_dir, ".EasyOCR", "user_network")
+        os.makedirs(user_dir, exist_ok=True)
+        
+        if os.path.exists(model_dir):
+            self.ocr_reader = easyocr.Reader(
+                ['en'], 
+                gpu=self.use_gpu, 
+                model_storage_directory=model_dir, 
+                user_network_directory=user_dir, 
+                download_enabled=False
+            )
+        else:
+            self.ocr_reader = easyocr.Reader(['en'], gpu=self.use_gpu)
 
         self._initialized = True
         print("[ANPRService] ANPR Vision Pipeline Ready.")
@@ -148,7 +162,6 @@ class ANPRService:
                                 suffix_c = clean
                                 suffix_conf = conf_val
                         elif clean.isalpha() and len(clean) <= 3 and clean not in DISCARD_WORDS:
-                            # Higher confidence series wins (e.g. true series FF with conf 0.87 beats glare CL with conf 0.33)
                             if conf_val > series_conf:
                                 series_c = clean
                                 series_conf = conf_val
@@ -165,9 +178,7 @@ class ANPRService:
                             corrected, is_valid, mod = process_and_correct_plate(cand_text, known_plates)
 
                             # Scoring priorities:
-                            # 1. Exact 10-char plate or known DB plate
                             length_bonus = 1.5 if (len(corrected) == 10 or (len(corrected) == 9 and len(corrected) > 3 and corrected[2].isdigit())) else 0.0
-                            # 2. CMVR compliance (no 'O' in series)
                             cmvr_bonus = 1.0 if (len(corrected) >= 6 and 'O' not in corrected[4:6]) else 0.0
                             
                             priority_score = (avg_conf * mod) + (3.0 if is_valid else 0.0) + length_bonus + cmvr_bonus
@@ -192,7 +203,7 @@ class ANPRService:
     ) -> Dict[str, Any]:
         """
         End-to-End Execution:
-        Image -> YOLOv8 Detection -> OpenCV Deskew/Enhance -> EasyOCR -> Positional Regex -> Telemetry
+        Image -> YOLOv8 Multi-Candidate Plate Localization -> OpenCV Deskew/Enhance -> EasyOCR -> Positional Regex -> Telemetry
         """
         start_total = time.perf_counter()
         telemetry_stages = []
@@ -213,17 +224,22 @@ class ANPRService:
 
         orig_h, orig_w = image.shape[:2]
 
-        # --- STAGE 1: Plate Detection (YOLOv8) ---
+        # --- STAGE 1: Plate Detection (YOLOv8 Multi-Candidate) ---
         t1 = time.perf_counter()
-        cropped_plate, bbox, det_conf = self.detector.detect_plate(image)
+        candidates = self.detector.detect_plate_candidates(image)
+        if not candidates:
+            single_crop, single_bbox, single_conf = self.detector.detect_plate(image)
+            if single_crop is not None:
+                candidates = [(single_crop, single_bbox, single_conf)]
+
         t_det = (time.perf_counter() - t1) * 1000
         telemetry_stages.append({
             "name": "Plate Localization (YOLOv8)",
-            "status": "completed" if cropped_plate is not None else "failed",
+            "status": "completed" if candidates else "failed",
             "time_ms": round(t_det, 1)
         })
 
-        if cropped_plate is None:
+        if not candidates:
             return {
                 "detected": False,
                 "registration_number": "",
@@ -237,62 +253,127 @@ class ANPRService:
                 "message": "No vehicle license plate detected in image."
             }
 
-        # Standardize cropped plate height to 140px for optimal OCR character differentiation
-        ch, cw = cropped_plate.shape[:2]
-        if (ch < 110 or ch > 240) and ch > 0:
-            scale = 140.0 / ch
-            new_w = max(140, int(cw * scale))
-            cropped_plate = cv2.resize(
-                cropped_plate, (new_w, 140), 
-                interpolation=cv2.INTER_LANCZOS4 if scale > 1 else cv2.INTER_AREA
+        # --- STAGES 2, 3, 4: Multi-Candidate Competitive OCR & Verification ---
+        best_cand_result = None
+        best_cand_score = -999.0
+        
+        t_prep_total = 0.0
+        t_ocr_total = 0.0
+        t_regex_total = 0.0
+
+        for cand_crop, cand_bbox, cand_conf in candidates[:4]:
+            if cand_crop is None or cand_crop.size == 0:
+                continue
+
+            # Standardize cropped plate height to 140px for optimal OCR character differentiation
+            ch, cw = cand_crop.shape[:2]
+            if ch > 0:
+                scale = 140.0 / ch
+                new_w = max(140, int(cw * scale))
+                cand_crop_resized = cv2.resize(
+                    cand_crop, (new_w, 140), 
+                    interpolation=cv2.INTER_LANCZOS4 if scale > 1 else cv2.INTER_AREA
+                )
+            else:
+                cand_crop_resized = cand_crop
+
+            t2 = time.perf_counter()
+            enhanced_gray, binarized = preprocess_plate(cand_crop_resized)
+            h, w = cand_crop_resized.shape[:2]
+            ocr_images = [enhanced_gray, binarized]
+            if w > 80:
+                hsrp_trimmed = cand_crop_resized[:, int(w * 0.10):]
+                enhanced_trimmed, binarized_trimmed = preprocess_plate(hsrp_trimmed)
+                ocr_images.extend([enhanced_trimmed, binarized_trimmed])
+            t_prep_total += (time.perf_counter() - t2) * 1000
+
+            t3 = time.perf_counter()
+            raw_ocr_text, ocr_conf = self.run_ocr(ocr_images, known_plates)
+            t_ocr_total += (time.perf_counter() - t3) * 1000
+
+            t4 = time.perf_counter()
+            final_plate, is_valid, conf_mod = process_and_correct_plate(raw_ocr_text, known_plates)
+            t_regex_total += (time.perf_counter() - t4) * 1000
+
+            # Candidate Scoring:
+            gray_cand = cv2.cvtColor(cand_crop, cv2.COLOR_BGR2GRAY) if len(cand_crop.shape) == 3 else cand_crop
+            mean_lum = float(np.mean(gray_cand))
+            lum_penalty = -3.0 if (mean_lum < 60.0 and not is_valid) else 0.0
+
+            cand_score = (
+                (12.0 if is_valid else 0.0) +
+                (2.0 if len(final_plate) == 10 else (1.0 if len(final_plate) >= 8 else 0.0)) +
+                (ocr_conf * 3.0) +
+                (cand_conf * 1.5) +
+                lum_penalty
             )
 
-        # --- STAGE 2: Preprocessing (OpenCV) ---
-        t2 = time.perf_counter()
-        enhanced_gray, binarized = preprocess_plate(cropped_plate)
-        
-        # Priority order: Enhanced Grayscale first, then HSRP-trimmed as resilient fallback
-        h, w = cropped_plate.shape[:2]
-        ocr_images = [enhanced_gray]
-        if w > 80:
-            hsrp_trimmed = cropped_plate[:, int(w * 0.10):]
-            enhanced_trimmed, _ = preprocess_plate(hsrp_trimmed)
-            ocr_images.append(enhanced_trimmed)
+            if cand_score > best_cand_score:
+                best_cand_score = cand_score
+                best_cand_result = {
+                    "crop": cand_crop_resized,
+                    "bbox": cand_bbox,
+                    "det_conf": cand_conf,
+                    "raw_ocr": raw_ocr_text,
+                    "ocr_conf": ocr_conf,
+                    "final_plate": final_plate,
+                    "is_valid": is_valid,
+                    "conf_mod": conf_mod
+                }
 
-        t_prep = (time.perf_counter() - t2) * 1000
+            # Early break if top candidate yields a valid plate with high confidence
+            if is_valid and len(final_plate) >= 9 and ocr_conf >= 0.40:
+                break
+
         telemetry_stages.append({
             "name": "OpenCV Deskewing & Threshold",
             "status": "completed",
-            "time_ms": round(t_prep, 1)
+            "time_ms": round(t_prep_total, 1)
         })
-
-        # --- STAGE 3: Character Recognition (EasyOCR) ---
-        t3 = time.perf_counter()
-        raw_ocr_text, ocr_conf = self.run_ocr(ocr_images, known_plates)
-        t_ocr = (time.perf_counter() - t3) * 1000
         telemetry_stages.append({
             "name": "EasyOCR Character Extraction",
             "status": "completed",
-            "time_ms": round(t_ocr, 1)
+            "time_ms": round(t_ocr_total, 1)
         })
-
-        # --- STAGE 4: Positional Regex & Fuzzy Correction ---
-        t4 = time.perf_counter()
-        final_plate, is_valid, conf_mod = process_and_correct_plate(raw_ocr_text, known_plates)
-        t_regex = (time.perf_counter() - t4) * 1000
         telemetry_stages.append({
             "name": "Indian Plate Regex Correction",
             "status": "completed",
-            "time_ms": round(t_regex, 1)
+            "time_ms": round(t_regex_total, 1)
         })
 
         total_time_ms = round((time.perf_counter() - start_total) * 1000, 1)
 
-        # Base64 encode the cropped plate for officer visual confirmation
-        _, buffer = cv2.imencode('.jpg', cropped_plate)
+        if not best_cand_result:
+            return {
+                "detected": False,
+                "registration_number": "",
+                "raw_ocr": "",
+                "confidence": 0.0,
+                "is_valid_format": False,
+                "bounding_box": None,
+                "execution_time_ms": total_time_ms,
+                "plate_image_base64": None,
+                "pipeline_stages": telemetry_stages,
+                "message": "No vehicle license plate detected in image."
+            }
+
+        winning_crop = best_cand_result["crop"]
+        winning_bbox = best_cand_result["bbox"]
+        det_conf = best_cand_result["det_conf"]
+        raw_ocr_text = best_cand_result["raw_ocr"]
+        ocr_conf = best_cand_result["ocr_conf"]
+        final_plate = best_cand_result["final_plate"]
+        is_valid = best_cand_result["is_valid"]
+        conf_mod = best_cand_result["conf_mod"]
+
+        # Base64 encode the winning cropped plate for officer visual confirmation
+        _, buffer = cv2.imencode('.jpg', winning_crop)
         plate_b64 = f"data:image/jpeg;base64,{base64.b64encode(buffer).decode('utf-8')}"
 
         combined_confidence = round(float((det_conf * 0.4 + ocr_conf * 0.4 + conf_mod * 0.2)), 3)
+
+        # Convert bounding box elements to native python ints for clean JSON serialization
+        clean_bbox = [int(coord) for coord in winning_bbox] if winning_bbox else None
 
         if not is_valid or not final_plate:
             return {
@@ -301,7 +382,7 @@ class ANPRService:
                 "raw_ocr": raw_ocr_text,
                 "confidence": 0.0,
                 "is_valid_format": False,
-                "bounding_box": list(bbox) if bbox else None,
+                "bounding_box": clean_bbox,
                 "image_width": orig_w,
                 "image_height": orig_h,
                 "execution_time_ms": total_time_ms,
@@ -316,7 +397,7 @@ class ANPRService:
             "raw_ocr": raw_ocr_text,
             "confidence": min(0.99, max(0.60, combined_confidence)),
             "is_valid_format": True,
-            "bounding_box": list(bbox),
+            "bounding_box": clean_bbox,
             "image_width": orig_w,
             "image_height": orig_h,
             "execution_time_ms": total_time_ms,
@@ -338,5 +419,3 @@ class LazyANPRServiceProxy:
         return getattr(get_anpr_service(), name)
 
 anpr_service = LazyANPRServiceProxy()
-
-

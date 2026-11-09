@@ -12,10 +12,6 @@ def get_current_officer(
     db: Session = Depends(get_db)
 ) -> Officer:
     if not credentials:
-        # For convenience in roadside inspection demo, check if officer 1 is present as fallback or raise
-        officer = db.query(Officer).first()
-        if officer:
-            return officer
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication credentials were not provided."

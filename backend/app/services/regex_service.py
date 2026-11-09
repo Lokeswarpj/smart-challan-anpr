@@ -47,13 +47,47 @@ DIGIT_TO_LETTER = {
     '8': 'B'
 }
 
+# Optical Prefix Repair: Handles HSRP blue band / hologram optical misreads on initial state letters
+STATE_OPTICAL_PREFIX_REPAIR = {
+    # K misreads (K -> FI, 4, X, H, IC)
+    "FIL": "KL", "4L": "KL", "XL": "KL", "HL": "KL", "ICL": "KL",
+    "FIA": "KA", "4A": "KA", "XA": "KA", "HA": "KA", "ICA": "KA",
+    # D misreads (D -> 0, O, Q)
+    "0L": "DL", "OL": "DL", "QL": "DL",
+    "0D": "OD", "OD": "OD",
+    # M misreads (M -> RN, AA, NN)
+    "RNH": "MH", "AAH": "MH",
+    "RNL": "ML",
+    "RNP": "MP",
+    # T misreads (T -> 7, I, Y)
+    "7N": "TN", "YN": "TN", "IN": "TN",
+    "7S": "TS", "YS": "TS",
+    "7R": "TR", "YR": "TR",
+    # G misreads (G -> 6, C, Q)
+    "6J": "GJ", "CJ": "GJ", "QJ": "GJ",
+    "6A": "GA", "CA": "GA",
+    # U misreads (U -> V, 0, O)
+    "VP": "UP", "0P": "UP", "OP": "UP",
+    "VK": "UK", "0K": "UK",
+    # A misreads (A -> 4)
+    "4P": "AP", "4R": "AR", "4S": "AS", "4N": "AN",
+    # H misreads (H -> 11, II, N)
+    "11R": "HR", "IIR": "HR", "NR": "HR",
+    "11P": "HP", "IIP": "HP",
+    # B misreads (B -> 8, P, R)
+    "8R": "BR", "PR": "BR",
+    # P misreads (P -> R, F)
+    "FB": "PB", "RB": "PB",
+    "FY": "PY", "RY": "PY",
+}
+
 def extract_true_plate_start(text: str) -> str:
     """
     Scans for the true Indian State Code or Bharat Series prefix,
     stripping leading noise caused by the blue HSRP left stripe, Ashoka Chakra, or border glare.
     Example: 'HHR26DO555J' -> 'HR26DO555J'
-             'CHR26DO555J' -> 'HR26DO555J'
-             'MHR26005551' -> 'HR26005551'
+             'FIL58463406' -> 'KL58463406'
+             'E4L584634061' -> 'KL584634061'
              'INDHR26DQ5551' -> 'HR26DQ5551'
     """
     if not text or len(text) < 8:
@@ -75,7 +109,7 @@ def extract_true_plate_start(text: str) -> str:
                 c2 = remaining[3] if len(remaining) > 3 else ''
                 priority = 0
                 if c1.isdigit() and c2.isdigit():
-                    priority = 10  # State + 2 true digits (e.g. HR26, KA01)
+                    priority = 10  # State + 2 true digits (e.g. HR26, KA01, KL58)
                 elif c1.isdigit():
                     priority = 8   # State + 1 true digit (e.g. DL1)
                 elif c1 in '0123456789ODIZ' and c2 in '0123456789ODIZ':
@@ -91,7 +125,20 @@ def extract_true_plate_start(text: str) -> str:
     if best_match and best_priority >= 5:
         return best_match
 
-    # 2. Check for Bharat (BH) Series e.g. '22BH...', 'X22BH...'
+    # 2. Check for Optical State Prefix repairs (e.g. FIL58 -> KL58, 4L58 -> KL58)
+    for prefix, target in STATE_OPTICAL_PREFIX_REPAIR.items():
+        idx = text.find(prefix)
+        if idx != -1:
+            remaining = text[idx + len(prefix):]
+            if len(remaining) >= 6:
+                c1 = remaining[0] if len(remaining) > 0 else ''
+                c2 = remaining[1] if len(remaining) > 1 else ''
+                if (c1.isdigit() or c1 in '0123456789ODIZ') and (c2.isdigit() or c2 in '0123456789ODIZ'):
+                    cand = target + remaining
+                    if 8 <= len(cand) <= 12:
+                        return cand
+
+    # 3. Check for Bharat (BH) Series e.g. '22BH...', 'X22BH...'
     bh_idx = text.find("BH")
     if bh_idx >= 2:
         year_cand = text[bh_idx - 2:bh_idx]
@@ -204,7 +251,7 @@ def correct_positional_errors(text: str) -> str:
             chars[0] = 'BR' if c0 in ['B', '8'] else ('AR' if c0 == 'A' else 'HR')
         elif c1 == 'L':
             # DL, KL, ML, NL
-            chars[0] = 'DL' if c0 in ['D', '0', 'O', 'Q', 'U'] else ('KL' if c0 in ['K', 'X'] else 'DL')
+            chars[0] = 'DL' if c0 in ['D', '0', 'O', 'Q', 'U'] else ('KL' if c0 in ['K', 'X', 'F'] else 'DL')
         elif c1 == 'H':
             # MH, CH, JH
             chars[0] = 'MH' if c0 in ['M', 'N', 'W', 'H'] else 'CH'
@@ -327,8 +374,9 @@ def prune_extra_series_characters(text: str, known_plates: Optional[List[str]] =
 
 def fuzzy_match_against_database(candidate: str, known_plates: List[str], max_distance: int = 2) -> Optional[str]:
     """
-    If OCR output is slightly distorted, find the closest matching valid registration plate
+    If OCR output is slightly distorted or invalid, find the closest matching valid registration plate
     from the seeded database if Levenshtein distance <= max_distance.
+    Safety constraint: NEVER mutate the trailing 4 digits if candidate already has 4 valid digits.
     """
     if not candidate or not known_plates:
         return None
@@ -336,7 +384,13 @@ def fuzzy_match_against_database(candidate: str, known_plates: List[str], max_di
     result = process.extractOne(candidate, known_plates, scorer=fuzz.ratio)
     if result:
         match, score, _ = result
-        if score >= 80:
+        if score >= 88:
+            # Check trailing digits safety
+            cand_digits = candidate[-4:] if len(candidate) >= 4 and candidate[-4:].isdigit() else None
+            match_digits = match[-4:] if len(match) >= 4 and match[-4:].isdigit() else None
+            if cand_digits and match_digits and cand_digits != match_digits:
+                # Different vehicle digits! Do NOT hijack different vehicle
+                return None
             return match
             
     return None
@@ -345,20 +399,21 @@ def process_and_correct_plate(raw_ocr_text: str, known_plates: Optional[List[str
     """
     Full validation and error-correction pipeline:
     1. Clean noise & whitespace
-    2. Check exact validity
+    2. Check exact validity with known database plates
     3. Apply positional heuristic substitution
-    4. RapidFuzz database match fallback
+    4. Validate format (CMVR standard: State + District + Series + Digits)
+    5. Fallback to fuzzy database recovery ONLY if not already a valid format
     Returns: (final_plate, is_valid_format, confidence_modifier)
     """
     cleaned = clean_ocr_text(raw_ocr_text)
     if not cleaned:
         return "", False, 0.0
 
-    # If already fully valid and in database
+    # Priority 1: If cleaned text exactly matches a registered vehicle in database
     if known_plates and cleaned in known_plates:
         return cleaned, True, 1.0
 
-    # Apply positional corrections (e.g. O -> 0, J -> 1, or series O -> D)
+    # Apply positional corrections (e.g. O -> 0, J -> 1, or series O -> D, FIL -> KL)
     corrected = correct_positional_errors(cleaned)
     
     # Prune extra noise characters / reflection artifacts in multi-line or glare scenarios
@@ -367,23 +422,26 @@ def process_and_correct_plate(raw_ocr_text: str, known_plates: Optional[List[str
         if is_valid_plate(pruned):
             corrected = pruned
     
-    # Priority 1: Exact match with registered database vehicle
+    # Priority 2: Exact match with registered database vehicle
     if known_plates and corrected in known_plates:
         return corrected, True, 1.0
 
-    # Priority 2: Fuzzy match against registered database vehicle (Levenshtein distance <= 2, e.g. V vs Y optical misread)
-    if known_plates:
-        db_match = fuzzy_match_against_database(corrected, known_plates)
-        if db_match:
-            return db_match, True, 0.96
-
     # Priority 3: Conforms to standard Indian or Bharat series regex
+    # CRITICAL: If the scanned plate is ALREADY completely valid (e.g. KL58AG3406),
+    # NEVER mutate it into another database car (like KL58AG2406)!
     if is_valid_plate(corrected):
         return corrected, True, 0.95
 
-    # If already valid without positional change
+    # Priority 4: If cleaned text was valid without positional modification
     if is_valid_plate(cleaned):
         return cleaned, True, 1.0
+
+    # Priority 5: Fuzzy match against registered database vehicle as error recovery
+    # ONLY executed if the plate is NOT already a valid format
+    if known_plates:
+        db_match = fuzzy_match_against_database(corrected, known_plates)
+        if db_match:
+            return db_match, True, 0.90
 
     # If not a valid Indian plate format, reject it cleanly
     return "", False, 0.0

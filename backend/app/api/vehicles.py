@@ -141,6 +141,18 @@ def get_vehicle_by_plate(
     vehicle = db.query(Vehicle).filter(Vehicle.registration_number == clean_plate).first()
     
     if not vehicle:
+        # VAHAN National Register Integration:
+        # If plate has valid Indian registration syntax, automatically fetch/create compliance profile
+        from app.services.regex_service import is_valid_plate
+        from app.services.vahan_service import auto_create_vahan_profile
+        if is_valid_plate(clean_plate):
+            try:
+                vehicle = auto_create_vahan_profile(clean_plate, db)
+            except Exception:
+                db.rollback()
+                vehicle = db.query(Vehicle).filter(Vehicle.registration_number == clean_plate).first()
+    
+    if not vehicle:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No vehicle record found for registration plate '{clean_plate}'."

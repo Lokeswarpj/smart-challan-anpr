@@ -21,10 +21,13 @@ try:
         active_db_type = "SQLite"
         logger.info(f"Connected to SQLite database: {settings.DATABASE_URL}")
     else:
-        # Attempt primary PostgreSQL connection with resilient 4s timeout
+        # Attempt primary PostgreSQL connection with resilient 4s timeout and bounded pooling
         pg_engine = create_engine(
             settings.DATABASE_URL,
             pool_pre_ping=True,
+            pool_size=10,
+            max_overflow=20,
+            pool_timeout=10,
             connect_args={"connect_timeout": 4}
         )
         with pg_engine.connect() as conn:
@@ -45,27 +48,24 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 def get_db():
     """
     Resilient database dependency.
-    Yields the primary database session, but automatically falls back to SQLite
-    if the connection drops or times out mid-request.
+    Yields the database session and ensures clean closure without breaking
+    generator lifecycle when endpoints raise standard HTTPExceptions.
     """
     global engine, active_db_type
     try:
         db = SessionLocal()
         # Verify connection health before handing off to route
         db.execute(text("SELECT 1"))
-        try:
-            yield db
-        finally:
-            db.close()
     except Exception as e:
         logger.warning(
             f"Database connection error on {active_db_type} ({e}). "
             f"Failing over to local SQLite database."
         )
-        fallback_db = SqliteSessionLocal()
-        try:
-            yield fallback_db
-        finally:
-            fallback_db.close()
+        db = SqliteSessionLocal()
+
+    try:
+        yield db
+    finally:
+        db.close()
 
 

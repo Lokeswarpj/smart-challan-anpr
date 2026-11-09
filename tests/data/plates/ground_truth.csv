@@ -1,0 +1,101 @@
+filename,true_plate,category,has_plate
+daylight_001.jpg,KA01AB1234,Daylight Standard,True
+daylight_002.jpg,KA05NB3321,Daylight Standard,True
+daylight_003.jpg,DL04CC9999,Daylight Standard,True
+daylight_004.jpg,MH12DE7890,Daylight Standard,True
+daylight_005.jpg,KA03MG4567,Daylight Standard,True
+daylight_006.jpg,KA04EF1122,Daylight Standard,True
+daylight_007.jpg,KA53Z9000,Daylight Standard,True
+daylight_008.jpg,TN09AB1001,Daylight Standard,True
+daylight_009.jpg,HR26DQ5551,Daylight Standard,True
+daylight_010.jpg,UP32RN5761,Daylight Standard,True
+night_011.jpg,KA01AB1234,Night Low-Light,True
+night_012.jpg,KA05NB3321,Night Low-Light,True
+night_013.jpg,DL04CC9999,Night Low-Light,True
+night_014.jpg,MH12DE7890,Night Low-Light,True
+night_015.jpg,KA03MG4567,Night Low-Light,True
+night_016.jpg,KA04EF1122,Night Low-Light,True
+glare_017.jpg,KA01AB1234,Glare Reflection,True
+glare_018.jpg,KA05NB3321,Glare Reflection,True
+glare_019.jpg,DL04CC9999,Glare Reflection,True
+glare_020.jpg,MH12DE7890,Glare Reflection,True
+glare_021.jpg,KA03MG4567,Glare Reflection,True
+glare_022.jpg,KA04EF1122,Glare Reflection,True
+blur_023.jpg,KA01AB1234,Motion Blur,True
+blur_024.jpg,KA05NB3321,Motion Blur,True
+blur_025.jpg,DL04CC9999,Motion Blur,True
+blur_026.jpg,MH12DE7890,Motion Blur,True
+blur_027.jpg,KA03MG4567,Motion Blur,True
+blur_028.jpg,KA04EF1122,Motion Blur,True
+rain_029.jpg,KA01AB1234,Rain Weather,True
+rain_030.jpg,KA05NB3321,Rain Weather,True
+rain_031.jpg,DL04CC9999,Rain Weather,True
+rain_032.jpg,MH12DE7890,Rain Weather,True
+rain_033.jpg,KA03MG4567,Rain Weather,True
+rain_034.jpg,KA04EF1122,Rain Weather,True
+tilt15_035.jpg,KA01AB1234,Tilted 15 Deg,True
+tilt15_036.jpg,KA05NB3321,Tilted 15 Deg,True
+tilt15_037.jpg,DL04CC9999,Tilted 15 Deg,True
+tilt15_038.jpg,MH12DE7890,Tilted 15 Deg,True
+tilt15_039.jpg,KA03MG4567,Tilted 15 Deg,True
+tilt15_040.jpg,KA04EF1122,Tilted 15 Deg,True
+tilt30_041.jpg,KA01AB1234,Tilted 30 Deg,True
+tilt30_042.jpg,KA05NB3321,Tilted 30 Deg,True
+tilt30_043.jpg,DL04CC9999,Tilted 30 Deg,True
+tilt30_044.jpg,MH12DE7890,Tilted 30 Deg,True
+tilt30_045.jpg,KA03MG4567,Tilted 30 Deg,True
+tilt30_046.jpg,KA04EF1122,Tilted 30 Deg,True
+tilt45_047.jpg,KA01AB1234,Tilted 45 Deg,True
+tilt45_048.jpg,KA05NB3321,Tilted 45 Deg,True
+tilt45_049.jpg,DL04CC9999,Tilted 45 Deg,True
+tilt45_050.jpg,MH12DE7890,Tilted 45 Deg,True
+tilt45_051.jpg,KA03MG4567,Tilted 45 Deg,True
+tilt45_052.jpg,KA04EF1122,Tilted 45 Deg,True
+far_053.jpg,KA01AB1234,Far Low-Res,True
+far_054.jpg,KA05NB3321,Far Low-Res,True
+far_055.jpg,DL04CC9999,Far Low-Res,True
+far_056.jpg,MH12DE7890,Far Low-Res,True
+far_057.jpg,KA03MG4567,Far Low-Res,True
+far_058.jpg,KA04EF1122,Far Low-Res,True
+near_059.jpg,KA01AB1234,Near Crop,True
+near_060.jpg,KA05NB3321,Near Crop,True
+near_061.jpg,DL04CC9999,Near Crop,True
+near_062.jpg,MH12DE7890,Near Crop,True
+near_063.jpg,KA03MG4567,Near Crop,True
+near_064.jpg,KA04EF1122,Near Crop,True
+dirty_065.jpg,KA01AB1234,Dirty Damaged,True
+dirty_066.jpg,KA05NB3321,Dirty Damaged,True
+dirty_067.jpg,DL04CC9999,Dirty Damaged,True
+dirty_068.jpg,MH12DE7890,Dirty Damaged,True
+dirty_069.jpg,KA03MG4567,Dirty Damaged,True
+dirty_070.jpg,KA04EF1122,Dirty Damaged,True
+twoline_071.jpg,KA05HB1234,Two-Wheeler Two-Line,True
+twoline_072.jpg,MH14EK9988,Two-Wheeler Two-Line,True
+twoline_073.jpg,DL03SW4321,Two-Wheeler Two-Line,True
+twoline_074.jpg,KA01EE5500,Two-Wheeler Two-Line,True
+twoline_075.jpg,TN22CC8899,Two-Wheeler Two-Line,True
+twoline_076.jpg,TS08AA1122,Two-Wheeler Two-Line,True
+yellow_077.jpg,KA01F1234,Commercial Yellow Plate,True
+yellow_078.jpg,MH02E5555,Commercial Yellow Plate,True
+yellow_079.jpg,DL1T9999,Commercial Yellow Plate,True
+yellow_080.jpg,HR55A7788,Commercial Yellow Plate,True
+yellow_081.jpg,UP14T2020,Commercial Yellow Plate,True
+yellow_082.jpg,TN01Y4433,Commercial Yellow Plate,True
+bh_083.jpg,22BH9988AA,Bharat (BH) Series,True
+bh_084.jpg,23BH4512BB,Bharat (BH) Series,True
+bh_085.jpg,24BH1001CC,Bharat (BH) Series,True
+bh_086.jpg,21BH7722DD,Bharat (BH) Series,True
+bh_087.jpg,22BH0033EE,Bharat (BH) Series,True
+bh_088.jpg,24BH5544FF,Bharat (BH) Series,True
+stylized_089.jpg,KA01AB1234,Stylized Font,True
+stylized_090.jpg,KA05NB3321,Stylized Font,True
+stylized_091.jpg,DL04CC9999,Stylized Font,True
+stylized_092.jpg,MH12DE7890,Stylized Font,True
+stylized_093.jpg,KA03MG4567,Stylized Font,True
+stylized_094.jpg,KA04EF1122,Stylized Font,True
+neg_blank.jpg,,Negative Rejection,False
+neg_noise.jpg,,Negative Rejection,False
+neg_face_dummy.jpg,,Negative Rejection,False
+neg_scenery.jpg,,Negative Rejection,False
+neg_solid_black.jpg,,Negative Rejection,False
+neg_pattern.jpg,,Negative Rejection,False

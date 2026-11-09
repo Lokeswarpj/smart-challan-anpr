@@ -1,14 +1,14 @@
 """
 YOLOv8 License Plate Detector
 Part of: Vehicle Document Verification System using ANPR (Phase 2)
-Integrates Ultralytics YOLOv8 with fallback contour localization for robust plate isolation.
+Integrates Ultralytics YOLOv8 with multi-candidate extraction and morphological fallback.
 """
 
 import os
 import cv2
 import numpy as np
 from ultralytics import YOLO
-from typing import Tuple, Optional, Dict, Any
+from typing import Tuple, Optional, Dict, Any, List
 
 class PlateDetector:
     def __init__(self, weights_path: Optional[str] = None):
@@ -19,42 +19,40 @@ class PlateDetector:
         if weights_path and os.path.exists(weights_path):
             self.model_path = weights_path
         else:
-            # Prioritize custom trained best.pt, fallback to yolov8n.pt
             root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
             custom_weights = os.path.join(root_dir, "ai_model", "best.pt")
-            model_weights = os.path.join(root_dir, "ai_model", "yolov8n.pt")
-            root_weights = os.path.join(root_dir, "yolov8n.pt")
+            s_weights = os.path.join(root_dir, "ai_model", "yolov8s.pt")
+            n_weights = os.path.join(root_dir, "ai_model", "yolov8n.pt")
+            root_s_weights = os.path.join(root_dir, "yolov8s.pt")
+            root_n_weights = os.path.join(root_dir, "yolov8n.pt")
+            
             if os.path.exists(custom_weights):
                 self.model_path = custom_weights
-            elif os.path.exists(model_weights):
-                self.model_path = model_weights
-            elif os.path.exists(root_weights):
-                self.model_path = root_weights
+            elif os.path.exists(s_weights):
+                self.model_path = s_weights
+            elif os.path.exists(root_s_weights):
+                self.model_path = root_s_weights
+            elif os.path.exists(n_weights):
+                self.model_path = n_weights
+            elif os.path.exists(root_n_weights):
+                self.model_path = root_n_weights
             else:
-                self.model_path = "yolov8n.pt"
+                self.model_path = "yolov8s.pt"
 
         print(f"[PlateDetector] Loading YOLOv8 model from: {self.model_path}")
         self.model = YOLO(self.model_path)
 
-    def detect_plate(self, image: np.ndarray) -> Tuple[np.ndarray, Tuple[int, int, int, int], float]:
+    def detect_plate_candidates(self, image: np.ndarray) -> List[Tuple[np.ndarray, Tuple[int, int, int, int], float]]:
         """
-        Detects and crops the license plate from an image.
-        Returns:
-            cropped_plate: np.ndarray
-            bounding_box: (x1, y1, x2, y2)
-            confidence: float (0.0 to 1.0)
+        Detects all candidate plate bounding boxes with valid aspect ratio.
+        Returns list of (cropped_plate, (crop_x1, crop_y1, crop_x2, crop_y2), confidence)
+        sorted by confidence descending.
         """
         h, w = image.shape[:2]
-        
-        # 1. Run YOLOv8 inference
-        results = self.model.predict(image, conf=0.25, verbose=False)
+        results = self.model.predict(image, conf=0.20, verbose=False)
         boxes = results[0].boxes
         
-        best_crop = None
-        best_box = (0, 0, w, h)
-        best_conf = 0.0
-
-        # Check detected objects
+        candidates = []
         if len(boxes) > 0:
             for box in boxes:
                 cls_id = int(box.cls[0].item())
@@ -65,57 +63,55 @@ class PlateDetector:
                 bh = y2 - y1
                 box_aspect = bw / float(bh) if bh > 0 else 0.0
                 
-                # Check if trained custom class for license plate (usually class 0 or 'LicensePlate')
                 cls_name = self.model.names.get(cls_id, "")
-                if ("plate" in cls_name.lower() or cls_id == 0) and conf >= 0.25:
-                    # Validate aspect ratio:
-                    # Rectangular plates (2.0 to 6.5) and Two-line / square motorcycle plates (1.1 to 2.0)
-                    if 1.1 <= box_aspect <= 6.5 and conf > best_conf:
-                        best_conf = conf
-                        best_box = (x1, y1, x2, y2)
-                        # Add slight 5% margin around the plate
-                        pad_x = int(bw * 0.05)
-                        pad_y = int(bh * 0.08)
+                if ("plate" in cls_name.lower() or cls_id == 0) and conf >= 0.20:
+                    # Realistic Indian plate aspect ratios (standard rectangular ~4.16, two-line ~1.7).
+                    # Reject wide horizontal grille slats / radiator slots (aspect > 4.8).
+                    if 1.1 <= box_aspect <= 4.8:
+                        pad_x = max(4, int(bw * 0.08))
+                        pad_y = max(3, int(bh * 0.10))
                         crop_x1 = max(0, x1 - pad_x)
                         crop_y1 = max(0, y1 - pad_y)
                         crop_x2 = min(w, x2 + pad_x)
                         crop_y2 = min(h, y2 + pad_y)
                         best_crop = image[crop_y1:crop_y2, crop_x1:crop_x2]
+                        candidates.append((best_crop, (crop_x1, crop_y1, crop_x2, crop_y2), conf))
 
-                # If detected vehicle (car, motorcycle, bus, truck), look in vehicle lower half
                 elif cls_name in ["car", "motorcycle", "bus", "truck"]:
                     veh_h = y2 - y1
-                    # Plate is generally in the lower 40% of the vehicle
                     plate_zone_y1 = int(y1 + veh_h * 0.55)
                     plate_zone = image[plate_zone_y1:y2, x1:x2]
-                    
-                    # Refine via contour search inside the vehicle plate zone
                     refined_crop, rel_box = self._morphological_plate_search(plate_zone)
-                    if refined_crop is not None and conf * 0.85 > best_conf:
-                        best_conf = conf * 0.85
+                    if refined_crop is not None:
                         rx1, ry1, rx2, ry2 = rel_box
-                        best_box = (x1 + rx1, plate_zone_y1 + ry1, x1 + rx2, plate_zone_y1 + ry2)
-                        best_crop = refined_crop
+                        cand_box = (x1 + rx1, plate_zone_y1 + ry1, x1 + rx2, plate_zone_y1 + ry2)
+                        candidates.append((refined_crop, cand_box, conf * 0.85))
 
-        # 2. If YOLO did not isolate a plate, apply morphological search on whole image
-        if best_crop is None:
-            best_crop, box = self._morphological_plate_search(image)
-            if best_crop is not None:
-                best_box = box
-                best_conf = 0.72
+        candidates.sort(key=lambda x: x[2], reverse=True)
+        return candidates
 
-        # 3. Fallback: If image itself is ALREADY a tight cropped plate photo
-        if best_crop is None or best_crop.size == 0:
-            aspect = w / float(h)
-            if 2.0 <= aspect <= 5.5 and w >= 80 and h >= 20:  # Standard plate aspect ratio
-                best_crop = image
-                best_box = (0, 0, w, h)
-                best_conf = 0.75
-            else:
-                # No plate detected in frame
-                return None, (0, 0, 0, 0), 0.0
+    def detect_plate(self, image: np.ndarray) -> Tuple[Optional[np.ndarray], Tuple[int, int, int, int], float]:
+        """
+        Detects and crops the license plate from an image.
+        Returns:
+            cropped_plate: Optional[np.ndarray]
+            bounding_box: (x1, y1, x2, y2)
+            confidence: float (0.0 to 1.0)
+        """
+        h, w = image.shape[:2]
+        candidates = self.detect_plate_candidates(image)
+        if candidates:
+            return candidates[0]
 
-        return best_crop, best_box, best_conf
+        best_crop, box = self._morphological_plate_search(image)
+        if best_crop is not None:
+            return best_crop, box, 0.72
+
+        aspect = w / float(h)
+        if 2.0 <= aspect <= 5.5 and w >= 80 and h >= 20:
+            return image, (0, 0, w, h), 0.75
+
+        return None, (0, 0, 0, 0), 0.0
 
     def _morphological_plate_search(self, image: np.ndarray) -> Tuple[Optional[np.ndarray], Tuple[int, int, int, int]]:
         """
@@ -126,15 +122,12 @@ class PlateDetector:
             h, w = image.shape[:2]
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
             
-            # Morphological gradient to highlight character vertical edges
             grad_x = cv2.Sobel(gray, cv2.CV_16S, 1, 0, ksize=3)
             abs_grad_x = cv2.convertScaleAbs(grad_x)
             
-            # Blur and Otsu threshold
             blurred = cv2.GaussianBlur(abs_grad_x, (5, 5), 0)
             _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             
-            # Close gaps between characters to form a single solid rectangular blob
             rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (17, 3))
             closed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, rect_kernel)
             
@@ -143,7 +136,6 @@ class PlateDetector:
             for c in sorted(contours, key=cv2.contourArea, reverse=True)[:5]:
                 x, y, cw, ch = cv2.boundingRect(c)
                 aspect = cw / float(ch)
-                # Indian license plates typically have aspect ratios between 2.2 and 5.0
                 if 2.0 <= aspect <= 5.5 and (cw * ch) > (w * h * 0.02):
                     crop = image[y:y+ch, x:x+cw]
                     return crop, (x, y, x+cw, y+ch)
@@ -151,4 +143,3 @@ class PlateDetector:
             pass
             
         return None, (0, 0, 0, 0)
-

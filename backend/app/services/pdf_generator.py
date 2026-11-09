@@ -1,6 +1,7 @@
 import io
 import os
 import qrcode
+from xml.sax.saxutils import escape as xml_escape
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -9,6 +10,10 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
+
+def safe_xml(val) -> str:
+    """Escapes XML/HTML reserved characters (<, >, &) to prevent ReportLab paraparser crashes."""
+    return xml_escape(str(val)) if val is not None else ""
 
 def generate_challan_pdf(challan_data: dict) -> bytes:
     """
@@ -117,11 +122,11 @@ def generate_challan_pdf(challan_data: dict) -> bytes:
     qr_buffer.seek(0)
     qr_flowable = RLImage(qr_buffer, width=1.1*inch, height=1.1*inch)
 
-    challan_no = challan_data.get("challan_number", "CH-2026-UNKNOWN")
-    issued_date = challan_data.get("issued_at", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    due_date = challan_data.get("due_date", "15 Days from Notice")
-    location = challan_data.get("location", "Central Junction")
-    officer_badge = challan_data.get("officer_badge", "KA-POL-1001")
+    challan_no = safe_xml(challan_data.get("challan_number", "CH-2026-UNKNOWN"))
+    issued_date = safe_xml(challan_data.get("issued_at", datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    due_date = safe_xml(challan_data.get("due_date", "15 Days from Notice"))
+    location = safe_xml(challan_data.get("location", "Central Junction"))
+    officer_badge = safe_xml(challan_data.get("officer_badge", "KA-POL-1001"))
 
     info_data = [
         [
@@ -154,11 +159,11 @@ def generate_challan_pdf(challan_data: dict) -> bytes:
     elements.append(Paragraph("<b>VEHICLE & OWNER DETAILS</b>", subtitle_style))
     elements.append(Spacer(1, 6))
 
-    reg_no = challan_data.get("registration_number", "N/A")
-    owner_name = challan_data.get("owner_name", "Vehicle Registered Owner")
-    maker_model = challan_data.get("maker_model", "Passenger Motor Vehicle")
-    fuel_type = challan_data.get("fuel_type", "Petrol / Diesel")
-    owner_phone = challan_data.get("owner_phone", "Registered Contact")
+    reg_no = safe_xml(challan_data.get("registration_number", "N/A"))
+    owner_name = safe_xml(challan_data.get("owner_name", "Vehicle Registered Owner"))
+    maker_model = safe_xml(challan_data.get("maker_model", "Passenger Motor Vehicle"))
+    fuel_type = safe_xml(challan_data.get("fuel_type", "Petrol / Diesel"))
+    owner_phone = safe_xml(challan_data.get("owner_phone", "Registered Contact"))
 
     veh_data = [
         [
@@ -198,8 +203,8 @@ def generate_challan_pdf(challan_data: dict) -> bytes:
     elements.append(Spacer(1, 6))
 
     fine_amt = challan_data.get("fine_amount", 1000.0)
-    rule_section = challan_data.get("rule_section", "Sec 177 / 196 Motor Vehicles Act, 1988")
-    violation_title = challan_data.get("violation_title", "Traffic Offence / Document Expiry")
+    rule_section = safe_xml(challan_data.get("rule_section", "Sec 177 / 196 Motor Vehicles Act, 1988"))
+    violation_title = safe_xml(challan_data.get("violation_title", "Traffic Offence / Document Expiry"))
 
     fine_data = [
         [

@@ -1,6 +1,7 @@
 """
 Ultralytics YOLO Training Script for License Plate Detection
-Dataset: unique dataset (5,583 unique source images)
+Dataset: Combined Unique + Roboflow Dataset (7,233 total annotated images)
+Train: 5,116 | Valid: 1,512 | Test: 605
 """
 
 import argparse
@@ -10,8 +11,9 @@ from ultralytics import YOLO
 
 def main():
     parser = argparse.ArgumentParser(description="Train YOLOv8 on Unique License Plate Dataset")
-    parser.add_argument("--epochs", type=int, default=10, help="Number of training epochs (default: 10)")
+    parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs (default: 50)")
     parser.add_argument("--batch", type=int, default=16, help="Batch size (default: 16)")
+    parser.add_argument("--model", type=str, default="yolov8s.pt", help="Base model weights (default: yolov8s.pt)")
     parser.add_argument("--device", type=str, default="", help="Device: 'cpu', '0', etc. Defaults to auto-detect")
     args = parser.parse_args()
 
@@ -31,27 +33,29 @@ def main():
     print(f"Using device: {selected_device} (CUDA available: {torch.cuda.is_available()})")
 
     # 3. Select pre-trained base model
-    weights_local = Path(__file__).parent / "yolov8n.pt"
-    model_source = str(weights_local) if weights_local.exists() else "yolov8n.pt"
+    weights_local = Path(__file__).parent / args.model
+    model_source = str(weights_local) if weights_local.exists() else args.model
+    print(f"Initializing YOLO model using base weights: {model_source}")
     model = YOLO(model_source)
     
     # 4. Train the model
-    print(f"Starting training on unique dataset (Epochs: {args.epochs}, Batch: {args.batch})...")
+    print(f"Starting training on unique dataset (Epochs: {args.epochs}, Batch: {args.batch}, Model: {args.model})...")
     results = model.train(
         data=str(dataset_yaml),
         epochs=args.epochs,
         imgsz=640,
         batch=args.batch,
         patience=10,
+        cos_lr=True,
         device=selected_device,
         workers=2,
         project="LicensePlate_Project",
-        name="yolov8n_unique_detector",
+        name="yolov8s_unique_detector",
         exist_ok=True
     )
     
     # 5. Evaluate on test set
-    print("\nRunning final evaluation on the 441 unseen test images...")
+    print("\nRunning final evaluation on the 605 unseen test images...")
     metrics = model.val(split="test")
     print(f"mAP@50:    {metrics.box.map50:.4f}")
     print(f"mAP@50-95: {metrics.box.map:.4f}")
