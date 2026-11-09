@@ -279,12 +279,17 @@ class ANPRService:
 
             t2 = time.perf_counter()
             enhanced_gray, binarized = preprocess_plate(cand_crop_resized)
+            gray_cand = cv2.cvtColor(cand_crop_resized, cv2.COLOR_BGR2GRAY) if len(cand_crop_resized.shape) == 3 else cand_crop_resized
+            clahe = cv2.createCLAHE(clipLimit=2.2, tileGridSize=(8, 8))
+            clahe_img = clahe.apply(gray_cand)
             h, w = cand_crop_resized.shape[:2]
-            ocr_images = [enhanced_gray, binarized]
+            ocr_images = [enhanced_gray, clahe_img, binarized]
             if w > 80:
                 hsrp_trimmed = cand_crop_resized[:, int(w * 0.10):]
                 enhanced_trimmed, binarized_trimmed = preprocess_plate(hsrp_trimmed)
-                ocr_images.extend([enhanced_trimmed, binarized_trimmed])
+                gray_trimmed = cv2.cvtColor(hsrp_trimmed, cv2.COLOR_BGR2GRAY) if len(hsrp_trimmed.shape) == 3 else hsrp_trimmed
+                clahe_trimmed = clahe.apply(gray_trimmed)
+                ocr_images.extend([enhanced_trimmed, clahe_trimmed, binarized_trimmed])
             t_prep_total += (time.perf_counter() - t2) * 1000
 
             t3 = time.perf_counter()

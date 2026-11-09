@@ -37,7 +37,7 @@ LETTER_TO_DIGIT = {
 }
 
 DIGIT_TO_LETTER = {
-    '0': 'D',  # Under CMVR / MoRTH rules, 'O' and 'Q' are prohibited in series; 0 is misread for D
+    '0': 'D',  # Under CMVR rules, 'O' is prohibited; 0 can be misread for D or Q
     '1': 'I',
     '2': 'Z',
     '3': 'E',
@@ -45,6 +45,25 @@ DIGIT_TO_LETTER = {
     '5': 'S',
     '6': 'G',
     '8': 'B'
+}
+
+# Optical Confusion Sets for Indian License Plate series and district glyphs
+OPTICAL_SERIES_CONFUSIONS = {
+    'M': {'N', 'W', 'RN', 'NN'},
+    'N': {'M', 'H', 'II', 'U'},
+    'Q': {'D', '0', 'O', 'G'},
+    'D': {'Q', '0', 'O', 'B'},
+    '0': {'D', 'Q', 'O'},
+    'O': {'D', 'Q', '0'},
+    'B': {'8', 'P', 'R'},
+    '8': {'B', '3'},
+    'Z': {'2', '7'},
+    '2': {'Z', '71', '21'},
+    '71': {'2', 'Z', '7I'},
+    'S': {'5'},
+    '5': {'S'},
+    'I': {'1', 'L', 'T', 'J'},
+    '1': {'I', 'L', 'T', 'J'}
 }
 
 # Optical Prefix Repair: Handles HSRP blue band / hologram optical misreads on initial state letters
@@ -372,6 +391,71 @@ def prune_extra_series_characters(text: str, known_plates: Optional[List[str]] =
 
     return text
 
+def resolve_registered_optical_neighbor(candidate: str, known_plates: List[str]) -> Optional[str]:
+    """
+    Intelligently checks whether an OCR candidate (even if superficially regex-valid)
+    is an optical misread of an existing registered vehicle in the database.
+    
+    Guarantees:
+    1. NEVER hijacks a different vehicle: Trailing 4 digits MUST match exactly.
+    2. State code MUST match exactly.
+    3. Resolves standard glyph confusions:
+       - M <-> N (e.g. KA20NG5550 -> KA20MG5550)
+       - D / 0 / O <-> Q (e.g. HR26DD5551 -> HR26DQ5551)
+       - 2 / Z / 7I <-> 71 (e.g. HR2H0003 -> HR71H0003)
+       - B <-> 8, S <-> 5, I <-> 1
+    """
+    if not candidate or not known_plates:
+        return None
+    cand_clean = candidate.replace(' ', '').upper()
+    if len(cand_clean) < 7:
+        return None
+    cand_digits = cand_clean[-4:] if len(cand_clean) >= 4 and cand_clean[-4:].isdigit() else None
+    if not cand_digits:
+        return None
+    cand_state = cand_clean[:2]
+
+    # Trailing digits constraint: only consider database vehicles with the exact same 4 digits
+    candidates_with_same_digits = [kp for kp in known_plates if kp.endswith(cand_digits)]
+    if not candidates_with_same_digits:
+        return None
+
+    for kp in candidates_with_same_digits:
+        if kp[:2] != cand_state:
+            continue
+        
+        # Candidate and database plate have identical state and trailing 4 digits
+        kp_mid = kp[2:-4]
+        cand_mid = cand_clean[2:-4]
+        
+        # If middle parts match identically
+        if kp_mid == cand_mid:
+            return kp
+            
+        # Same length series/district substitution check (e.g. 20NG vs 20MG, 26DD vs 26DQ)
+        if len(kp_mid) == len(cand_mid):
+            diffs = [(c1, c2) for c1, c2 in zip(kp_mid, cand_mid) if c1 != c2]
+            if len(diffs) <= 2:
+                all_optical = True
+                for c_kp, c_cand in diffs:
+                    if (c_cand not in OPTICAL_SERIES_CONFUSIONS.get(c_kp, set()) and 
+                        c_kp not in OPTICAL_SERIES_CONFUSIONS.get(c_cand, set())):
+                        all_optical = False
+                        break
+                if all_optical:
+                    return kp
+                    
+        # Fused district digit check (e.g. 71 vs 2: HR71H vs HR2H / HRZH)
+        if (cand_mid.startswith('2') or cand_mid.startswith('Z')) and kp_mid.startswith('71'):
+            if cand_mid[1:] == kp_mid[2:]:
+                return kp
+                
+        # High similarity optical match
+        if fuzz.ratio(kp, cand_clean) >= 80:
+            return kp
+
+    return None
+
 def fuzzy_match_against_database(candidate: str, known_plates: List[str], max_distance: int = 2) -> Optional[str]:
     """
     If OCR output is slightly distorted or invalid, find the closest matching valid registration plate
@@ -401,8 +485,9 @@ def process_and_correct_plate(raw_ocr_text: str, known_plates: Optional[List[str
     1. Clean noise & whitespace
     2. Check exact validity with known database plates
     3. Apply positional heuristic substitution
-    4. Validate format (CMVR standard: State + District + Series + Digits)
-    5. Fallback to fuzzy database recovery ONLY if not already a valid format
+    4. Resolve optical neighbor against registered database vehicles
+    5. Validate format (CMVR standard: State + District + Series + Digits)
+    6. Fallback to fuzzy database recovery ONLY if not already a valid format
     Returns: (final_plate, is_valid_format, confidence_modifier)
     """
     cleaned = clean_ocr_text(raw_ocr_text)
@@ -426,17 +511,26 @@ def process_and_correct_plate(raw_ocr_text: str, known_plates: Optional[List[str
     if known_plates and corrected in known_plates:
         return corrected, True, 1.0
 
-    # Priority 3: Conforms to standard Indian or Bharat series regex
-    # CRITICAL: If the scanned plate is ALREADY completely valid (e.g. KL58AG3406),
-    # NEVER mutate it into another database car (like KL58AG2406)!
+    # Priority 3: Resolve optical neighbor against registered database vehicles
+    # Resolves common optical character errors (M/N, Q/D/0, 71/2) to verified registered vehicles
+    # while strictly enforcing identical trailing 4 digits and state.
+    if known_plates:
+        optical_match = resolve_registered_optical_neighbor(corrected, known_plates)
+        if not optical_match:
+            optical_match = resolve_registered_optical_neighbor(cleaned, known_plates)
+        if optical_match:
+            return optical_match, True, 0.98
+
+    # Priority 4: Conforms to standard Indian or Bharat series regex
+    # Valid standalone plate (e.g. out-of-state or unregistered car)
     if is_valid_plate(corrected):
         return corrected, True, 0.95
 
-    # Priority 4: If cleaned text was valid without positional modification
+    # Priority 5: If cleaned text was valid without positional modification
     if is_valid_plate(cleaned):
         return cleaned, True, 1.0
 
-    # Priority 5: Fuzzy match against registered database vehicle as error recovery
+    # Priority 6: Fuzzy match against registered database vehicle as error recovery
     # ONLY executed if the plate is NOT already a valid format
     if known_plates:
         db_match = fuzzy_match_against_database(corrected, known_plates)

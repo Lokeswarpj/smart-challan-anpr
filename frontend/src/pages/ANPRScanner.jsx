@@ -188,7 +188,7 @@ export default function ANPRScanner() {
                   <img
                     src={uploadedPreview}
                     alt="Captured vehicle plate"
-                    className="max-h-[440px] max-w-full object-contain block mx-auto border border-primary/20"
+                    className="max-h-[440px] max-w-full w-auto h-auto block mx-auto border border-primary/20"
                   />
 
                   {/* Scanning Laser Beam & Dynamic Stage Status */}

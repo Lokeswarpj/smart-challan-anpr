@@ -65,9 +65,9 @@ class PlateDetector:
                 
                 cls_name = self.model.names.get(cls_id, "")
                 if ("plate" in cls_name.lower() or cls_id == 0) and conf >= 0.20:
-                    # Realistic Indian plate aspect ratios (standard rectangular ~4.16, two-line ~1.7).
-                    # Reject wide horizontal grille slats / radiator slots (aspect > 4.8).
-                    if 1.1 <= box_aspect <= 4.8:
+                    # Realistic Indian plate aspect ratios (standard rectangular 500x120mm ~4.16, two-line 340x200mm ~1.7).
+                    # Reject wide horizontal grille slats / radiator slots / bumper trim (aspect > 4.4).
+                    if 1.2 <= box_aspect <= 4.4:
                         pad_x = max(4, int(bw * 0.08))
                         pad_y = max(3, int(bh * 0.10))
                         crop_x1 = max(0, x1 - pad_x)
