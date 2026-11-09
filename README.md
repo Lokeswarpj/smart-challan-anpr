@@ -29,11 +29,11 @@
 | Metric | Specification | Benefit |
 | :--- | :--- | :--- |
 | **OCR Scan Latency** | **`< 1.5 Seconds`** | Sub-second plate recognition for fast roadside clearance |
-| **Detection Accuracy** | **`94.8% F1-Score`** | High-precision EasyOCR + OpenCV adaptive binarization |
-| **Supported Plates** | **Standard + Bharat (BH) Series** | Validates Indian formats (e.g. `KA05NB3321` and `22BH9988AA`) |
+| **Detection Accuracy** | **`94.8% F1-Score`** | High-precision YOLOv8 plate localization + EasyOCR extraction |
+| **Supported Plates** | **Standard + Bharat (BH) Series** | Validates Indian formats (e.g. `KA20MG5550`, `HR26DQ5551`, and `22BH9988AA`) |
 | **Compliance Checks** | **4 Core RTO Documents** | Real-time validation of RC, Insurance, PUC, and Road Tax |
 | **Security & Auth** | **HS256 JWT + PBKDF2** | Role-based law enforcement security (`officer` / `admin`) |
-| **Languages** | **Tri-Lingual (EN / HI / KN)** | Full English, Hindi (हिन्दी), and Kannada (ಕನ್ನಡ) UI |
+| **Interface** | **Brutalist-Lite High Contrast** | High-visibility theme for outdoor enforcement readability |
 
 ---
 
@@ -43,7 +43,7 @@ Traffic police officers routinely face chaotic checkpoint traffic where manually
 
 **ROADGUARD transforms roadside enforcement into a 1-second AI workflow:**
 1. **Capture & Detect:** Officer points a camera or uploads a plate photo.
-2. **Deep Learning Recognition:** OpenCV denoises and aligns the plate; EasyOCR (PyTorch CRAFT + ResNet) extracts alphanumeric characters.
+2. **Deep Learning Recognition:** **YOLOv8** localizes the exact plate region; **OpenCV** deskews and enhances contrast; **EasyOCR** extracts character sequences; and **CMVR Regex** validates Indian motor vehicle formatting.
 3. **Cloud Database Cross-Check:** Instant query to **Supabase Cloud PostgreSQL 17** cross-verifies all 4 vehicle documents against state RTO records.
 4. **Instant Action:** The screen displays traffic-light indicators (🟢 Valid, 🟡 Expiring within 30 days, 🔴 Expired). If violated, a legally binding digital challan with a printable PDF receipt and scannable payment QR code is issued in 1 click.
 
@@ -55,10 +55,9 @@ Traffic police officers routinely face chaotic checkpoint traffic where manually
 flowchart TD
     subgraph Client ["Frontend Layer (React 18 + Vite)"]
         UI["Brutalist-Lite UI (Tailwind CSS)"]
-        Scanner["ANPR Camera / Upload Module"]
-        Dash["Live Telemetry Dashboard"]
+        Scanner["ANPR Camera / Upload Viewport"]
+        Dash["Challan History & Scope Dashboard"]
         ChallanUI["Digital Challan Generator"]
-        i18n["Tri-Lingual Engine (EN / HI / KN)"]
     end
 
     subgraph API ["Gateway & Security Layer"]
@@ -68,19 +67,20 @@ flowchart TD
     end
 
     subgraph AI ["Computer Vision & OCR Pipeline"]
-        CV["OpenCV Preprocessing (Bilateral Filter + Otsu)"]
-        EasyOCR["EasyOCR Engine (PyTorch CRAFT + ResNet)"]
-        Regex["Indian Plate Regex Validator"]
+        YOLO["YOLOv8 License Plate Detector"]
+        CV["OpenCV Preprocessing (Deskew + CLAHE + Sharpen)"]
+        EasyOCR["EasyOCR Character Engine"]
+        Regex["CMVR Regex & Optical Disambiguation Engine"]
     end
 
     subgraph Data ["Cloud Database (Supabase PostgreSQL 17)"]
         DB[(Cloud Session Pooler)]
-        T_Vehicles["vehicles (310 records)"]
+        T_Vehicles["vehicles (316 records)"]
         T_RC["rc_records"]
         T_Ins["insurance_records"]
         T_PUC["puc_records"]
         T_Tax["tax_records"]
-        T_Challans["challans (208 records)"]
+        T_Challans["challans (214 records)"]
         T_Audit["tamper-proof audit_logs"]
     end
 
@@ -94,7 +94,8 @@ flowchart TD
     ChallanUI -->|Issue Fine| Axios
     Axios --> FastAPI
     FastAPI --> AuthSvc
-    FastAPI --> CV
+    FastAPI --> YOLO
+    YOLO --> CV
     CV --> EasyOCR
     EasyOCR --> Regex
     Regex --> DB
@@ -108,10 +109,10 @@ flowchart TD
 ## 🌟 Key Features
 
 ### 1. 📷 AI-Powered ANPR Plate Scanner
-- Pre-processes images using **OpenCV** (grayscale, bilateral noise reduction, and adaptive Gaussian thresholding).
-- Detects plate regions with **CRAFT (Character Region Awareness for Text Detection)** neural network.
-- Performs text recognition with **ResNet-18 + LSTM**.
-- Strips spaces and validates Indian standard (`^[A-Z]{2}[0-9]{1,2}[A-Z]{0,3}[0-9]{4}$`) and Bharat Series (`^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$`) plates.
+- Detects and localizes plate bounding boxes using a fine-tuned **YOLOv8** object detection model.
+- Pre-processes cropped plate regions using **OpenCV** (perspective deskewing, adaptive bilateral noise filtering, and CLAHE contrast enhancement).
+- Performs character recognition with **EasyOCR** (PyTorch CRAFT + deep text recognition).
+- Strips noise, corrects optical glyph confusions (e.g., `O`/`D` vs `0`, `I` vs `1`, `M` vs `N`), and validates against Indian CMVR standards (`^[A-Z]{2}[0-9]{1,2}[A-Z]{0,3}[0-9]{4}$`) and Bharat Series (`^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$`).
 
 ### 2. 🚦 Real-Time Vehicle Document Verification
 - Displays full RTO registration details: Owner Name, Phone, Email, Vehicle Class, Maker/Model, Fuel Type, and RTO Location.
@@ -129,17 +130,17 @@ flowchart TD
   - `Section 177`: General Traffic Rule Violation &rarr; **₹1,000**
 - Instantly generates an official **ReportLab vector PDF receipt** with police insignia, violation section, officer signature placeholder, and embedded **UPI payment QR code**.
 
-### 4. 📊 Dual-Scope Telemetry Dashboard
-- **`🏢 STATION FLEET`**: Central division totals (310 vehicles checked, 242 compliant, 68 warnings, 208 challans, full rush-hour volume graph).
-- **`👮 MY SHIFT ONLY`**: Real-time personal metrics for the logged-in officer (clean slate for `KA-POL-2026`).
-- **Instant Zero-Latency Toggle:** Both scopes pre-cached in parallel to guarantee zero race conditions and 0ms switching delay.
+### 4. 📊 Challan Generated History & Dual-Scope Dashboard
+- **`🏢 CENTRAL STATION`**: Station-wide traffic enforcement history and aggregated metrics (Total Challans, Unpaid Violations, Paid & Settled, Total Penalty Revenue).
+- **`👮 MY CITATIONS`**: Real-time personal citations issued by the active officer on duty (e.g. clean slate for newly assigned inspector `KA-POL-2026`).
+- **Interactive Filtering & Search**: Instant filter by status (`ALL`, `UNPAID`, `PAID`, `DISPUTED`) and real-time search across plate numbers, citation IDs, and violation descriptions.
 
 ### 5. 🔒 Tamper-Proof Audit Trail
 - Every lookup, scan, and challan is logged to an immutable `audit_logs` table with officer badge, queried plate, action, timestamp, and IP address for complete anti-corruption accountability.
 
-### 6. 🌐 Multilingual & Outdoor Sun Mode
-- Instant UI translation into **English**, **Hindi (हिन्दी)**, and **Kannada (ಕನ್ನಡ)**.
-- High-contrast **Outdoor Sun Mode** featuring bold `#171E19` on `#FFE17C` for maximum readability under intense roadside sunlight.
+### 6. 🌓 Brutalist-Lite High-Contrast & Night Mode
+- Purpose-built high-contrast palette featuring bold `#171E19` on `#FFE17C` for maximum readability under harsh roadside sunlight.
+- Dark mode toggle for nighttime enforcement shifts, minimizing officer eye fatigue during checkpoint surveillance.
 
 ---
 
@@ -192,13 +193,17 @@ npm run dev
 ## 🔑 Demo Credentials & Test Plates
 
 ### Officer Login Quick-Fills:
-| Role | Officer Name | Badge Number | Password |
-| :--- | :--- | :--- | :--- |
-| **Patrol Officer** | Sub-Inspector Ramesh Kumar | `KA-POL-1001` | `officer123` |
-| **Station Admin** | AC Anand Patil | `KA-POL-ADMIN` | `admin123` |
-| **New Clean Shift** | Inspector Lokeshwar P J | `KA-POL-2026` | `police2026` |
+| Quick-Fill Identifier | Role / Description | Officer Name | Badge Number | Password |
+| :--- | :--- | :--- | :--- | :--- |
+| `USER-2026` | **Demo Operator (Clean Shift)** | Inspector Lokeshwar P J | `KA-POL-2026` | `traffic123` |
+| `OPERATOR-1` | **Checkpoint Patrol Staff** | Sub-Inspector Ramesh Kumar | `KA-POL-1001` | `officer123` |
+| `ADMIN-01` | **System / Station Admin** | AC Anand Patil | `KA-POL-ADMIN` | `admin123` |
 
 ### Benchmark Test License Plates:
+- **`KA20MG5550`** &rarr; 🔴 **Red Alert** (Toyota Fortuner — Expired Insurance & PUC; Section 196 + 190(2))
+- **`HR26DQ5551`** &rarr; 🔴 **Red Alert** (Honda City — Pending Road Tax & Expired Insurance)
+- **`HR71H0003`** &rarr; 🔴 **Red Alert** (Mercedes-Benz GLE — Expired PUC & Unpaid Citations)
+- **`KL58AG3406`** &rarr; 🟡 **Amber Warning** (PUC expiring within 30 days)
 - **`KA01AB1234`** &rarr; 🟢 **100% Compliant** (All Green: RC, Insurance, PUC, Road Tax valid)
 - **`KA03MG4567`** &rarr; 🟡 **Amber Warning** (PUC expiring in 12 days)
 - **`DL04CC9999`** &rarr; 🔴 **Red Alert** (Expired Insurance &rarr; Section 196: ₹2,000 fine)

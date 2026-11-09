@@ -12,7 +12,7 @@ pinned: false
 
 High-throughput FastAPI backend for the ROADGUARD AI-Powered Vehicle Document Verification System using Automatic Number Plate Recognition (ANPR).
 
-- **Architecture:** FastAPI, SQLAlchemy ORM, EasyOCR, PyTorch, ReportLab
+- **Architecture:** YOLOv8, EasyOCR, OpenCV, PyTorch, FastAPI, SQLAlchemy ORM, ReportLab
 - **Database:** Supabase Cloud PostgreSQL 17
 - **Port:** 7860 (Hugging Face Spaces internal routing)
 - **Health Check:** `/health`

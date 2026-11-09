@@ -22,9 +22,9 @@ ROADGUARD is an AI-powered vehicle document verification and traffic enforcement
    - 🔴 **Red (Expired / Pending):** Expired document or pending road tax.
 5. **Digital Challan Management:** Form auto-filling vehicle and owner records with statutory Motor Vehicles Act fines, and instant printable/downloadable PDF receipts with scannable payment QR codes.
 6. **Multi-Channel Dispatch:** Simulated email and SMS dispatch directly to vehicle owners.
-7. **Repeat Offender Timeline:** Chronological violation logs with PDF and Excel export facilities.
-8. **Departmental Analytics:** Responsive Recharts visualizing verification throughput, document status splits, and violation category distributions.
-9. **Administrative Console:** Registry CRUD operations, officer directory, and tamper-proof audit trails.
+7. **Repeat Offender Timeline:** Chronological violation logs with PDF and receipt generation.
+8. **Challan Generated History:** Centralized enforcement logs with live status filtering (`ALL`, `UNPAID`, `PAID`, `DISPUTED`) and real-time plate search.
+9. **Dual-Scope Enforcement View:** Instant zero-latency switching between `CENTRAL STATION` aggregate metrics and `MY CITATIONS` personal shift tracking.
 
 ---
 
@@ -50,38 +50,35 @@ ROADGUARD is an AI-powered vehicle document verification and traffic enforcement
 
 ---
 
-## 3. Multilingual & Accessibility
+## 3. High-Contrast Enforcement UI & Accessibility
 
-- **Multilingual Support (`react-i18next`):** Complete UI translations for **English (EN)**, **Hindi (हिन्दी)**, and **Kannada (ಕನ್ನಡ)**.
-- **Hands-Free Audio Voice Alerts (Web Speech API):** Automatic text-to-speech announcement of vehicle detection and violation flags (e.g. *"Vehicle KA05NB3321 verified. Pollution certificate expired."*).
-- **Display Modes:**
-  - **Light Mode:** Standard crisp editorial presentation.
-  - **Dark Mode:** Night patrol low-light mode.
-  - **Outdoor Mode:** Direct sunlight high-contrast mode with bold borders and saturated badges.
-- **Offline Resilience:** Local caching with IndexedDB / LocalStorage ensuring functionality in cellular dead zones.
+- **Brutalist-Lite Theme:** Clean high-contrast monochrome and golden-yellow styling for crisp readability in intense roadside sunlight.
+- **Night Patrol Dark Mode:** Single-click theme toggle providing low-glare visibility for late-night highway checkpoints.
+- **Offline Resilience:** Local token caching ensuring smooth session handling even in cellular dead zones.
 
 ---
 
 ## 4. Demo Accounts & Sample Vehicles
 
-### Officer Sign In Credentials
-| Role | Badge ID | Password | Access Level |
-| :--- | :--- | :--- | :--- |
-| **Officer** | `KA-POL-1001` | `officer123` | Roadside checks, camera ANPR, challan issuance |
-| **Officer** | `KA-POL-1002` | `officer123` | Roadside checks, camera ANPR, challan issuance |
-| **Admin** | `KA-POL-ADMIN` | `admin123` | Full access + vehicle registry management & audit logs |
+### Officer Sign In Quick-Fills
+| Quick-Fill Identifier | Role / Description | Officer Name | Badge ID | Password | Access Level |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `USER-2026` | **Demo Operator (Clean Shift)** | Inspector Lokeshwar P J | `KA-POL-2026` | `traffic123` | Roadside checks, camera ANPR, challan issuance |
+| `OPERATOR-1` | **Checkpoint Patrol Staff** | Sub-Inspector Ramesh Kumar | `KA-POL-1001` | `officer123` | Roadside checks, camera ANPR, challan issuance |
+| `ADMIN-01` | **System / Station Admin** | AC Anand Patil | `KA-POL-ADMIN` | `admin123` | Central station oversight & full enforcement audit |
 
 ### Seeded Test License Plates
+- `KA20MG5550` — Toyota Fortuner (Expired Insurance & PUC, Red Alert)
+- `HR26DQ5551` — Honda City (Pending Road Tax & Expired Insurance, Red Alert)
+- `HR71H0003` — Mercedes-Benz GLE (Expired PUC & Unpaid Citations, Red Alert)
+- `KL58AG3406` — Hyundai i20 (PUC Expiring within 20 days, Amber Warning)
 - `KA01AB1234` — Tata Nexon (100% Compliant, All Green)
 - `KA03MG4567` — Hyundai Creta (Expiring PUC in 12 days, Amber Alert)
-- `MH12DE7890` — Maruti Swift (Expiring Insurance in 20 days, Amber Alert)
 - `DL04CC9999` — Mahindra XUV700 (Expired Insurance, Red Alert)
 - `KA05NB3321` — Royal Enfield Classic (Expired PUC + 1 Pending Fine)
 - `KA04EF1122` — Tata Punch (Pending Road Tax, Red Alert)
 - `22BH9988AA` — Toyota Innova (Bharat BH Series, All Green)
-- `DL01A1001` — Honda Activa (Classic Series, All Green)
 - `KA53Z9000` — Ather 450X EV (Chronic Offender, 3 Unpaid Challans)
-- `MH02CB5555` — Tata 407 (Commercial Goods, Triple Expired)
 
 ---
 
