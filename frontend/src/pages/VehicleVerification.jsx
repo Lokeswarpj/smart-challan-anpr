@@ -24,7 +24,6 @@ import Loader from '../components/common/Loader';
 import { vehicleService } from '../services/vehicleService';
 import { anprService } from '../services/anprService';
 import { speechUtil } from '../utils/speech';
-import { useLanguage } from '../context/LanguageContext';
 
 export default function VehicleVerification() {
   const [queryPlate, setQueryPlate] = useState('');
@@ -40,7 +39,6 @@ export default function VehicleVerification() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  const { currentLanguage } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -98,7 +96,7 @@ export default function VehicleVerification() {
       const data = await vehicleService.lookupVehicle(target);
       setVehicle(data);
       // Auto voice announcement
-      speechUtil.announceVehicle(data, currentLanguage);
+      speechUtil.announceVehicle(data);
     } catch (err) {
       setError(err.message || `No records found for ${target}.`);
       setVehicle(null);
@@ -401,7 +399,7 @@ export default function VehicleVerification() {
             {/* Compliance Badge & Action Buttons */}
             <div className="flex flex-wrap items-center gap-2">
               <Button
-                onClick={() => speechUtil.announceVehicle(vehicle, currentLanguage)}
+                onClick={() => speechUtil.announceVehicle(vehicle)}
                 variant="accent"
                 size="sm"
                 icon={Volume2}

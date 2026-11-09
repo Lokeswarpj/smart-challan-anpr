@@ -83,9 +83,9 @@ export const speechUtil = {
   },
 
   /**
-   * Automatically select the best Indian voice for the target language
+   * Automatically select the best Indian English voice
    */
-  findBestVoice(lang = 'en') {
+  findBestVoice() {
     try {
       const voices = this.getVoices();
       if (!Array.isArray(voices) || voices.length === 0) return null;
@@ -102,25 +102,7 @@ export const speechUtil = {
         if (saved) return saved;
       }
 
-      // 2. Hindi language selected
-      if (lang === 'hi') {
-        const hiVoice =
-          validVoices.find((v) => String(v.name || '').includes('Madhur')) ||
-          validVoices.find((v) => String(v.name || '').includes('Swara')) ||
-          validVoices.find((v) => String(v.lang || '').toLowerCase().startsWith('hi'));
-        if (hiVoice) return hiVoice;
-      }
-
-      // 3. Kannada language selected
-      if (lang === 'kn') {
-        const knVoice =
-          validVoices.find((v) => String(v.name || '').includes('Gagan')) ||
-          validVoices.find((v) => String(v.name || '').includes('Sapna')) ||
-          validVoices.find((v) => String(v.lang || '').toLowerCase().startsWith('kn'));
-        if (knVoice) return knVoice;
-      }
-
-      // 4. Default: Indian English Voices in priority order
+      // 2. Default: Indian English Voices in priority order
       // Microsoft Neerja (Natural Female Indian)
       // Microsoft Prabhat (Natural Male Indian)
       // Microsoft Heera (Female Indian)
@@ -137,7 +119,7 @@ export const speechUtil = {
 
       if (indianVoice) return indianVoice;
 
-      // 5. Fallback to standard English voice
+      // 3. Fallback to standard English voice
       return (
         validVoices.find((v) => String(v.lang || '').toLowerCase().startsWith('en')) ||
         validVoices[0] ||
@@ -154,7 +136,7 @@ export const speechUtil = {
    * representation so that Web Speech API pronounces every letter and digit distinctly
    * (e.g. "K. A., 0 1, A. B., 1 2 3 4" instead of "ka zero one...")
    */
-  formatPlateForSpeech(plate, lang = 'en') {
+  formatPlateForSpeech(plate) {
     if (!plate) return '';
     const clean = String(plate).toUpperCase().replace(/[^A-Z0-9]/g, '');
 
@@ -190,7 +172,7 @@ export const speechUtil = {
   /**
    * Speak a text string using the browser's native SpeechSynthesis API
    */
-  speak(text, lang = 'en') {
+  speak(text) {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       console.warn('Speech synthesis not supported in this browser.');
       return;
@@ -203,18 +185,10 @@ export const speechUtil = {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 0.95; // Slightly measured rate for maximum clarity
       utterance.pitch = 1.0;
-
-      // Set voice language tag
-      if (lang === 'hi') {
-        utterance.lang = 'hi-IN';
-      } else if (lang === 'kn') {
-        utterance.lang = 'kn-IN';
-      } else {
-        utterance.lang = 'en-IN'; // Indian English voice preferred
-      }
+      utterance.lang = 'en-IN'; // Indian English voice preferred
 
       // Explicitly attach best matching Indian voice
-      const chosenVoice = this.findBestVoice(lang);
+      const chosenVoice = this.findBestVoice();
       if (chosenVoice) {
         utterance.voice = chosenVoice;
       }
@@ -228,63 +202,32 @@ export const speechUtil = {
   /**
    * Generates a clear, audible compliance report for field officers
    */
-  announceVehicle(vehicle, lang = 'en') {
+  announceVehicle(vehicle) {
     if (!vehicle || !vehicle.registration_number) return;
 
     const rawPlate = vehicle.registration_number;
-    const spokenPlate = this.formatPlateForSpeech(rawPlate, lang);
+    const spokenPlate = this.formatPlateForSpeech(rawPlate);
 
     const insStatus = vehicle.documents?.insurance?.status;
     const pucStatus = vehicle.documents?.puc?.status;
     const rcStatus = vehicle.documents?.rc?.status;
     const taxStatus = vehicle.documents?.road_tax?.status;
 
-    let message = '';
-    if (lang === 'hi') {
-      message = `वाहन ${spokenPlate} पाया गया। `;
-      if (rcStatus === 'expired') message += `आर. सी. पंजीकरण समाप्त है। `;
-      if (insStatus === 'expired') message += `बीमा समाप्त है। `;
-      if (pucStatus === 'expired') message += `प्रदूषण प्रमाण पत्र समाप्त है। `;
-      if (taxStatus === 'pending') message += `सड़क कर लंबित है। `;
-      if (
-        insStatus === 'valid' &&
-        pucStatus === 'valid' &&
-        taxStatus === 'paid' &&
-        rcStatus === 'valid'
-      ) {
-        message += `सभी दस्तावेज़ पूरी तरह वैध हैं। `;
-      }
-    } else if (lang === 'kn') {
-      message = `ವಾಹನ ${spokenPlate} ಪರಿಶೀಲಿಸಲಾಗಿದೆ. `;
-      if (rcStatus === 'expired') message += `ನೋಂದಣಿ ಪ್ರಮಾಣಪತ್ರ ಅವಧಿ ಮುಗಿದಿದೆ. `;
-      if (insStatus === 'expired') message += `ವಿಮೆ ಅವಧಿ ಮುಗಿದಿದೆ. `;
-      if (pucStatus === 'expired') message += `ಮಾಲಿನ್ಯ ಪ್ರಮಾಣಪತ್ರ ಅವಧಿ ಮುಗಿದಿದೆ. `;
-      if (taxStatus === 'pending') message += `ರಸ್ತೆ ತೆರಿಗೆ ಬಾಕಿ ಇದೆ. `;
-      if (
-        insStatus === 'valid' &&
-        pucStatus === 'valid' &&
-        taxStatus === 'paid' &&
-        rcStatus === 'valid'
-      ) {
-        message += `ಎಲ್ಲಾ ದಾಖಲೆಗಳು ಮಾನ್ಯವಾಗಿವೆ. `;
-      }
-    } else {
-      message = `Vehicle ${spokenPlate} verified. `;
-      if (rcStatus === 'expired') message += `Registration certificate expired. `;
-      if (insStatus === 'expired') message += `Insurance expired. `;
-      if (pucStatus === 'expired') message += `Pollution certificate expired. `;
-      if (taxStatus === 'pending') message += `Road tax pending. `;
-      if (
-        insStatus === 'valid' &&
-        pucStatus === 'valid' &&
-        taxStatus === 'paid' &&
-        rcStatus === 'valid'
-      ) {
-        message += `All documents are valid. `;
-      }
+    let message = `Vehicle ${spokenPlate} verified. `;
+    if (rcStatus === 'expired') message += `Registration certificate expired. `;
+    if (insStatus === 'expired') message += `Insurance expired. `;
+    if (pucStatus === 'expired') message += `Pollution certificate expired. `;
+    if (taxStatus === 'pending') message += `Road tax pending. `;
+    if (
+      insStatus === 'valid' &&
+      pucStatus === 'valid' &&
+      taxStatus === 'paid' &&
+      rcStatus === 'valid'
+    ) {
+      message += `All documents are valid. `;
     }
 
-    this.speak(message, lang);
+    this.speak(message);
   },
 
   stop() {

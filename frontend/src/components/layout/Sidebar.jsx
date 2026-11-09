@@ -1,6 +1,5 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   Search,
@@ -18,7 +17,6 @@ import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
 
 export default function Sidebar({ isOpen, onClose }) {
-  const { t } = useTranslation();
   const { officer, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -28,14 +26,14 @@ export default function Sidebar({ isOpen, onClose }) {
   };
 
   const navItems = [
-    { name: t('nav.dashboard'), path: '/dashboard', icon: LayoutDashboard },
-    { name: t('nav.verification'), path: '/vehicle-verification', icon: Search },
-    { name: t('nav.anpr_scanner'), path: '/anpr-scanner', icon: Camera },
-    { name: t('nav.challans'), path: '/challans', icon: FileText },
-    { name: t('nav.history'), path: '/history', icon: History },
-    { name: t('nav.reports'), path: '/reports', icon: BarChart3 },
-    ...(isAdmin ? [{ name: t('nav.admin'), path: '/admin', icon: ShieldAlert }] : []),
-    { name: t('nav.settings'), path: '/settings', icon: Settings },
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Vehicle Verification', path: '/vehicle-verification', icon: Search },
+    { name: 'ANPR Scanner', path: '/anpr-scanner', icon: Camera },
+    { name: 'E-Challans', path: '/challans', icon: FileText },
+    { name: 'Violation History', path: '/history', icon: History },
+    { name: 'Analytics & Reports', path: '/reports', icon: BarChart3 },
+    ...(isAdmin ? [{ name: 'Admin Console', path: '/admin', icon: ShieldAlert }] : []),
+    { name: 'Settings', path: '/settings', icon: Settings },
   ];
 
   return (
@@ -120,7 +118,7 @@ export default function Sidebar({ isOpen, onClose }) {
             className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase font-sans border border-primary dark:border-[#2D3931] bg-white dark:bg-[#1C241F] hover:bg-danger dark:hover:bg-danger hover:text-white transition-colors text-primary dark:text-white shadow-brutal-sm"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span>{t('nav.logout')}</span>
+            <span>Sign Out</span>
           </button>
         </div>
       </aside>

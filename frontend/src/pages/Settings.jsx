@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Volume2, Sun, Moon, Globe, Database, Shield, CheckCircle2 } from 'lucide-react';
+import { Volume2, Sun, Moon, Database, Shield, CheckCircle2 } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
 import Button from '../components/common/Button';
-import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { speechUtil } from '../utils/speech';
@@ -10,7 +9,6 @@ import { speechUtil } from '../utils/speech';
 import apiClient from '../services/apiClient';
 
 export default function Settings() {
-  const { currentLanguage, changeLanguage } = useLanguage();
   const { theme, setTheme, toggleOutdoor, isOutdoor } = useTheme();
   const { officer } = useAuth();
   const [testSpeechStatus, setTestSpeechStatus] = useState(false);
@@ -30,7 +28,7 @@ export default function Settings() {
           if (saved) {
             setSelectedVoiceURI(saved);
           } else {
-            const best = speechUtil.findBestVoice(currentLanguage);
+            const best = speechUtil.findBestVoice();
             if (best) {
               setSelectedVoiceURI(best.voiceURI || best.name || '');
             }
@@ -48,18 +46,13 @@ export default function Settings() {
       mounted = false;
       clearTimeout(t);
     };
-  }, [currentLanguage]);
+  }, []);
 
   const handleTestSpeech = () => {
     setTestSpeechStatus(true);
-    const samplePlate = speechUtil.formatPlateForSpeech('KA01AB1234', currentLanguage);
+    const samplePlate = speechUtil.formatPlateForSpeech('KA01AB1234');
     speechUtil.speak(
-      currentLanguage === 'hi'
-        ? `रोडगार्ड आवाज प्रणाली सक्रिय है। वाहन ${samplePlate} सत्यापित, सभी दस्तावेज़ वैध हैं।`
-        : currentLanguage === 'kn'
-        ? `ರೋಡ್‌ಗಾರ್ಡ್ ಧ್ವನಿ ವ್ಯವಸ್ಥೆ ಸಕ್ರಿಯವಾಗಿದೆ. ವಾಹನ ${samplePlate} ಪರಿಶೀಲಿಸಲಾಗಿದೆ, ಎಲ್ಲಾ ದಾಖಲೆಗಳು ಮಾನ್ಯವಾಗಿವೆ.`
-        : `RoadGuard voice alert system active. Vehicle ${samplePlate} verified. All documents valid.`,
-      currentLanguage
+      `RoadGuard voice alert system active. Vehicle ${samplePlate} verified. All documents valid.`
     );
     setTimeout(() => setTestSpeechStatus(false), 3000);
   };
@@ -84,7 +77,7 @@ export default function Settings() {
     <div className="space-y-8 max-w-4xl mx-auto">
       <PageHeader
         title="SYSTEM PREFERENCES & TELEMETRY"
-        subtitle="Manage multilingual localization, accessibility modes, audio speech, and offline synchronization."
+        subtitle="Manage accessibility modes, voice audio feedback, and database synchronization."
       />
 
       {syncStatus && (
@@ -94,42 +87,7 @@ export default function Settings() {
         </div>
       )}
 
-      {/* 1. Multilingual Support (Section 20) */}
-      <div className="bg-white dark:bg-surface border-2 border-primary shadow-brutal p-6 space-y-4">
-        <div className="flex items-center gap-2 pb-3 border-b border-primary/20">
-          <Globe className="w-5 h-5 text-accent" />
-          <h3 className="font-heading text-xl text-primary dark:text-white">
-            MULTILINGUAL LOCALIZATION (react-i18next)
-          </h3>
-        </div>
-        <p className="text-xs text-secondary dark:text-gray-300 font-sans">
-          Select interface language for seamless roadside operation across Indian state jurisdictions.
-        </p>
-
-        <div className="grid grid-cols-3 gap-4 pt-2">
-          {[
-            { code: 'en', label: 'English', native: 'English' },
-            { code: 'hi', label: 'Hindi', native: 'हिन्दी' },
-            { code: 'kn', label: 'Kannada', native: 'ಕನ್ನಡ' },
-          ].map((lang) => (
-            <button
-              key={lang.code}
-              type="button"
-              onClick={() => changeLanguage(lang.code)}
-              className={`p-4 border-2 border-primary text-center transition-all ${
-                currentLanguage === lang.code
-                  ? 'bg-accent text-primary font-black shadow-brutal-sm'
-                  : 'bg-surface dark:bg-surface-dark hover:bg-gray-100 dark:hover:bg-gray-800'
-              }`}
-            >
-              <div className="font-heading text-lg">{lang.native}</div>
-              <div className="text-[10px] font-mono text-gray-500 uppercase">{lang.label}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 2. Audio Voice Feedback (Section 21) */}
+      {/* 1. Audio Voice Feedback */}
       <div className="bg-white dark:bg-surface border-2 border-primary shadow-brutal p-6 space-y-4">
         <div className="flex items-center gap-2 pb-3 border-b border-primary/20">
           <Volume2 className="w-5 h-5 text-accent" />
@@ -207,7 +165,7 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* 3. Outdoor & Dark Theme Modes (Section 22) */}
+      {/* 2. Display Themes & Outdoor Visibility */}
       <div className="bg-white dark:bg-surface border-2 border-primary shadow-brutal p-6 space-y-4">
         <div className="flex items-center gap-2 pb-3 border-b border-primary/20">
           <Sun className="w-5 h-5 text-accent" />
@@ -258,7 +216,7 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* 4. Offline Database Synchronization (Section 23) */}
+      {/* 3. Offline Database Synchronization */}
       <div className="bg-white dark:bg-surface border-2 border-primary shadow-brutal p-6 space-y-4">
         <div className="flex items-center gap-2 pb-3 border-b border-primary/20">
           <Database className="w-5 h-5 text-accent" />

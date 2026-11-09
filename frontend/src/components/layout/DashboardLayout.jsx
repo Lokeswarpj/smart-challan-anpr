@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { Menu, Sun, Moon, Globe, Volume2, Wifi, WifiOff, ShieldCheck } from 'lucide-react';
-import { useLanguage } from '../../context/LanguageContext';
+import { Menu, Sun, Moon, Volume2, Wifi, WifiOff, ShieldCheck } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const { currentLanguage, changeLanguage } = useLanguage();
   const { theme, setTheme } = useTheme();
   const { officer } = useAuth();
 
@@ -61,40 +59,6 @@ export default function DashboardLayout() {
 
           {/* Quick Controls */}
           <div className="flex items-center gap-2.5 sm:gap-3">
-            {/* Language Selector */}
-            <div className="flex items-center border border-primary dark:border-[#2D3931] bg-white dark:bg-[#101512] p-0.5 shadow-brutal-sm">
-              <button
-                onClick={() => changeLanguage('en')}
-                className={`px-2 py-1 text-[11px] font-bold font-sans transition-colors ${
-                  currentLanguage === 'en'
-                    ? 'bg-accent text-primary'
-                    : 'text-secondary dark:text-sage hover:text-black dark:hover:text-white'
-                }`}
-              >
-                EN
-              </button>
-              <button
-                onClick={() => changeLanguage('hi')}
-                className={`px-2 py-1 text-[11px] font-bold font-sans transition-colors ${
-                  currentLanguage === 'hi'
-                    ? 'bg-accent text-primary'
-                    : 'text-secondary dark:text-sage hover:text-black dark:hover:text-white'
-                }`}
-              >
-                हिन्दी
-              </button>
-              <button
-                onClick={() => changeLanguage('kn')}
-                className={`px-2 py-1 text-[11px] font-bold font-sans transition-colors ${
-                  currentLanguage === 'kn'
-                    ? 'bg-accent text-primary'
-                    : 'text-secondary dark:text-sage hover:text-black dark:hover:text-white'
-                }`}
-              >
-                ಕನ್ನಡ
-              </button>
-            </div>
-
             {/* Single Unified Theme Toggle Button */}
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
