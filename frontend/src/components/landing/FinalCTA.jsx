@@ -22,7 +22,7 @@ export default function FinalCTA() {
 
         <Link to="/login">
           <Button variant="primary" size="lg" className="shadow-brutal hover:shadow-brutal-hover text-base">
-            ENTER OFFICER DASHBOARD <ArrowRight className="w-5 h-5 ml-1" />
+            ENTER PORTAL DASHBOARD <ArrowRight className="w-5 h-5 ml-1" />
           </Button>
         </Link>
       </div>

@@ -1,397 +1,607 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Car,
-  CheckCircle2,
-  AlertTriangle,
-  Receipt,
+  FileText,
   Search,
+  Filter,
+  Download,
+  Printer,
+  Mail,
+  MessageSquare,
+  QrCode,
+  Shield,
+  Plus,
+  Eye,
+  CheckCircle2,
+  AlertCircle,
+  Smartphone,
+  Send,
+  Copy,
+  ExternalLink,
+  Loader2,
   Camera,
-  ArrowUpRight,
-  TrendingUp,
-  ShieldAlert,
-  ArrowRight
+  Car,
+  AlertTriangle,
+  Receipt
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  BarChart,
-  Bar,
-  CartesianGrid
-} from 'recharts';
 import PageHeader from '../components/layout/PageHeader';
 import Button from '../components/common/Button';
+import Input from '../components/common/Input';
 import Badge from '../components/common/Badge';
-import { useAuth } from '../context/AuthContext';
-import { reportService } from '../services/reportService';
+import Modal from '../components/common/Modal';
 import { challanService } from '../services/challanService';
 
 export default function Dashboard() {
-  const { officer } = useAuth();
-  const [stationData, setStationData] = useState(null);
-  const [personalData, setPersonalData] = useState(null);
   const [challans, setChallans] = useState([]);
-  const [viewScope, setViewScope] = useState('station'); // 'station' | 'personal'
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [selectedChallan, setSelectedChallan] = useState(null);
+  const [dispatchMessage, setDispatchMessage] = useState('');
+  const [showSmsPreview, setShowSmsPreview] = useState(false);
+  const [demoPhone, setDemoPhone] = useState('8524994488');
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [isDispatchingSms, setIsDispatchingSms] = useState(false);
+  const [smsResult, setSmsResult] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchChallans = async () => {
+    try {
+      const data = await challanService.getChallans();
+      setChallans(data || []);
+    } catch (err) {
+      console.warn('Failed to fetch challans:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let isMounted = true;
-
-    // Load Station fleet overview first for sub-second initial paint
-    reportService.getDashboardAnalytics('station')
-      .then((stRes) => {
-        if (isMounted) {
-          setStationData(stRes);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (isMounted) setLoading(false);
-      });
-
-    // Load Personal shift scope in parallel
-    reportService.getDashboardAnalytics('personal')
-      .then((psRes) => {
-        if (isMounted) setPersonalData(psRes);
-      })
-      .catch(() => {});
-
-    // Load recent 6 challans in parallel
-    challanService.getChallans(6)
-      .then((chRes) => {
-        if (isMounted) setChallans(chRes || []);
-      })
-      .catch(() => {});
-
-    return () => {
-      isMounted = false;
-    };
+    fetchChallans();
   }, []);
 
-  const data = (viewScope === 'station' ? stationData : personalData) || stationData;
+  useEffect(() => {
+    if (selectedChallan) {
+      const p = selectedChallan.owner_phone
+        ? selectedChallan.owner_phone.replace(/[^0-9]/g, '').slice(-10)
+        : '8524994488';
+      setDemoPhone(p || '8524994488');
+      setSmsResult(null);
+    }
+  }, [selectedChallan]);
 
-  if (loading && !data) {
-    return (
-      <div className="p-12 text-center font-mono font-bold text-sm text-secondary animate-pulse">
-        CONNECTING TO ROADGUARD SECURE CHECKPOINT TELEMETRY...
-      </div>
-    );
-  }
+  // Compute live summary metrics directly from challans state
+  const totalChallans = challans.length;
+  const unpaidChallans = challans.filter((c) => (c.payment_status || '').toLowerCase() === 'unpaid').length;
+  const paidChallans = challans.filter((c) => (c.payment_status || '').toLowerCase() === 'paid').length;
+  const totalFines = challans.reduce((sum, c) => sum + (Number(c.fine_amount) || 0), 0);
 
-  const metrics = [
-    {
-      label: viewScope === 'station' ? 'TOTAL VEHICLES CHECKED' : 'MY VEHICLES VERIFIED',
-      value: data.metrics?.total_checked ?? 0,
-      icon: Car,
-      change: viewScope === 'station' ? '+14% division fleet today' : `${data.total_scanned ?? 0} scans logged under badge`,
-      variant: 'primary',
-    },
-    {
-      label: 'FULLY COMPLIANT (ALL GREEN)',
-      value: data.metrics?.valid_vehicles ?? 0,
-      icon: CheckCircle2,
-      change: `${data.compliance_rate ?? 100}% compliance rate`,
-      variant: 'success',
-    },
-    {
-      label: 'EXPIRED / PENDING WARNINGS',
-      value: data.metrics?.expired_documents ?? 0,
-      icon: AlertTriangle,
-      change: viewScope === 'station' ? `${data.metrics?.amber_warnings ?? 0} expiring soon` : `${data.metrics?.expired_documents ?? 0} violations issued`,
-      variant: 'danger',
-    },
-    {
-      label: viewScope === 'station' ? 'TOTAL CHALLANS ISSUED' : 'MY CHALLANS ISSUED',
-      value: data.metrics?.challans_issued ?? 0,
-      icon: Receipt,
-      change: `₹${((data.metrics?.collection_amount ?? 0) / 1000).toFixed(1)}k penalties logged`,
-      variant: 'accent',
-    },
-  ];
+  const filteredChallans = challans.filter((c) => {
+    const term = searchTerm.toLowerCase();
+    const matchesSearch =
+      (c.registration_number || '').toLowerCase().includes(term) ||
+      (c.id || '').toLowerCase().includes(term) ||
+      (c.violation_title || '').toLowerCase().includes(term) ||
+      (c.owner_name || '').toLowerCase().includes(term);
+
+    const matchesStatus =
+      statusFilter === 'ALL' || (c.payment_status || '').toUpperCase() === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDispatch = async (channel) => {
+    if (!selectedChallan) return;
+    if (channel === 'sms') {
+      setIsDispatchingSms(true);
+      setSmsResult(null);
+    }
+    const targetPhone = demoPhone || selectedChallan.owner_phone || '8524994488';
+    setDispatchMessage(`Dispatching via ${channel.toUpperCase()} to ${targetPhone}...`);
+
+    try {
+      const res = await challanService.dispatchReceipt(selectedChallan.id, channel, targetPhone);
+      setDispatchMessage(res.message);
+      if (channel === 'sms') {
+        setSmsResult({ success: res.success, message: res.message });
+        setShowSmsPreview(true);
+      }
+      const updated = await challanService.getChallans();
+      setChallans(updated);
+      setSelectedChallan((prev) => (prev ? { ...prev, dispatch_status: `sent_${channel}` } : null));
+    } catch (e) {
+      const errMsg = e.message || 'Dispatch request failed';
+      setDispatchMessage(`Dispatch error: ${errMsg}`);
+      if (channel === 'sms') {
+        setSmsResult({ success: false, message: errMsg });
+      }
+    } finally {
+      if (channel === 'sms') {
+        setIsDispatchingSms(false);
+      }
+      setTimeout(() => setDispatchMessage(''), 8000);
+    }
+  };
+
+  const getSmsMessageText = (challan) => {
+    if (!challan) return '';
+    return `ROADGUARD SMART E-CHALLAN NOTICE\nChallan ID: ${challan.challan_number || challan.id}\nVehicle: ${challan.registration_number}\nViolation: ${challan.violation_title} (${challan.rule_section || 'MV Act'})\nPenalty: INR ${challan.fine_amount}.00\nDue Date: ${challan.due_date || 'Within 30 days'}\nPay Online: https://echallan.parivahan.gov.in`;
+  };
+
+  const handleCopySms = () => {
+    if (!selectedChallan) return;
+    navigator.clipboard.writeText(getSmsMessageText(selectedChallan));
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2500);
+  };
+
+  const handleSendWhatsApp = () => {
+    if (!selectedChallan) return;
+    const cleanNumber = (demoPhone || selectedChallan.owner_phone || '8524994488')
+      .replace(/[^0-9]/g, '')
+      .replace(/^0+/, '');
+    const finalNumber = cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
+    const text = encodeURIComponent(getSmsMessageText(selectedChallan));
+    const url = `https://wa.me/${finalNumber}?text=${text}`;
+    window.open(url, '_blank');
+  };
+
+  const handleDirectSms = () => {
+    if (!selectedChallan) return;
+    const cleanNumber = (demoPhone || selectedChallan.owner_phone || '8524994488')
+      .replace(/[^0-9]/g, '')
+      .slice(-10);
+    const text = encodeURIComponent(getSmsMessageText(selectedChallan));
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const delimiter = isIOS ? '&' : '?';
+    window.location.href = `sms:+91${cleanNumber}${delimiter}body=${text}`;
+  };
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <PageHeader
-        title="ENFORCEMENT OVERVIEW"
-        subtitle="Live roadside document verification metrics and real-time checkpoint telemetry."
+        title="CHALLAN GENERATED HISTORY"
+        subtitle="Manage active smart challans, monitor payment resolution, and dispatch digital notifications."
         action={
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2.5">
             <Link to="/anpr-scanner">
-              <Button variant="accent" size="sm" icon={Camera}>
-                OPEN ANPR SCANNER
+              <Button variant="outline" size="sm" icon={Camera}>
+                SCAN NUMBER PLATE
               </Button>
             </Link>
-            <Link to="/vehicle-verification">
-              <Button variant="primary" size="sm" icon={Search}>
-                VERIFY VEHICLE
+            <Link to="/challans/new">
+              <Button variant="accent" size="sm" icon={Plus}>
+                ISSUE NEW CHALLAN
               </Button>
             </Link>
           </div>
         }
       />
 
-      {/* Scope Switcher: Station-Wide vs Personal Shift */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-surface border-2 border-primary shadow-brutal p-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono font-bold uppercase text-primary dark:text-white">
-            TELEMETRY VIEW:
-          </span>
-          <span className="text-[11px] font-sans text-secondary dark:text-gray-400">
-            {viewScope === 'station'
-              ? 'Central Division & Checkpoint Fleet Overview (All Officers Across Division)'
-              : `Personal Shift Activity & Scans Logged Under Your Badge (${officer?.badge_number || 'KA-POL-2026'})`}
-          </span>
-        </div>
-        <div className="inline-flex border-2 border-primary bg-surface dark:bg-surface-dark p-0.5 shadow-brutal-sm">
-          <button
-            type="button"
-            onClick={() => setViewScope('station')}
-            className={`px-3 py-1.5 text-xs font-mono font-bold uppercase transition-all ${
-              viewScope === 'station'
-                ? 'bg-accent text-primary shadow-sm font-black border border-primary'
-                : 'text-secondary dark:text-gray-300 hover:text-primary dark:hover:text-white font-bold'
-            }`}
-          >
-            🏢 STATION FLEET
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewScope('personal')}
-            className={`px-3 py-1.5 text-xs font-mono font-bold uppercase transition-all ${
-              viewScope === 'personal'
-                ? 'bg-accent text-primary shadow-sm font-black border border-primary'
-                : 'text-secondary dark:text-gray-300 hover:text-primary dark:hover:text-white font-bold'
-            }`}
-          >
-            👮 MY SHIFT ONLY
-          </button>
-        </div>
-      </div>
-
-      {/* 4 Primary Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {metrics.map((m, idx) => {
-          const Icon = m.icon;
-          return (
-            <div
-              key={idx}
-              className="p-6 bg-white dark:bg-surface border-2 border-primary shadow-brutal flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-mono font-bold uppercase text-secondary dark:text-gray-300">
-                  {m.label}
-                </span>
-                <div className="p-2 border border-primary bg-surface dark:bg-surface-dark">
-                  <Icon className="w-4 h-4 text-primary dark:text-accent" />
-                </div>
-              </div>
-              <div>
-                <div className="font-heading text-4xl text-primary dark:text-white mb-2">
-                  {m.value}
-                </div>
-                <div className="text-xs font-mono font-bold text-secondary dark:text-gray-400">
-                  {m.change}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Verification Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Activity Trend (2 cols) */}
-        <div className="lg:col-span-2 bg-white dark:bg-surface border-2 border-primary shadow-brutal p-6">
-          <div className="flex items-center justify-between pb-4 border-b border-primary/20 mb-6">
-            <div>
-              <h3 className="font-heading text-xl text-primary dark:text-white">
-                HOURLY VERIFICATION VOLUME {viewScope === 'personal' ? '(MY SHIFT)' : '(STATION FLEET)'}
-              </h3>
-              <p className="text-xs font-sans text-secondary dark:text-gray-400">
-                {viewScope === 'personal'
-                  ? 'Real-time vehicle scans & citations logged under your officer badge today.'
-                  : 'Vehicle inspection throughput vs detected violations across shifts.'}
-              </p>
-            </div>
-            <span className="text-xs font-mono bg-accent text-primary px-2 py-0.5 border border-primary font-bold">
-              {viewScope === 'personal' ? 'MY SHIFT' : 'STATION'}
+      {/* 4 Summary Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-5 bg-white dark:bg-[#171E19] border-2 border-primary dark:border-[#2D3931] shadow-brutal-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-mono font-bold uppercase text-secondary dark:text-gray-400">
+              TOTAL CHALLANS
             </span>
+            <Receipt className="w-5 h-5 text-accent" />
           </div>
-
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data.activity_chart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="time" stroke="#171E19" fontSize={11} />
-                <YAxis stroke="#171E19" fontSize={11} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#171E19',
-                    border: '1px solid #FFE17C',
-                    color: '#fff',
-                    fontFamily: 'Satoshi, sans-serif',
-                    fontSize: '12px'
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="checks"
-                  stroke="#171E19"
-                  fill="#FFE17C"
-                  fillOpacity={0.6}
-                  strokeWidth={2}
-                  name="Total Checks"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="violations"
-                  stroke="#EF4444"
-                  fill="#EF4444"
-                  fillOpacity={0.2}
-                  strokeWidth={2}
-                  name="Violations Flagged"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="font-heading text-3xl font-black text-primary dark:text-white">
+            {totalChallans}
           </div>
+          <p className="text-[11px] font-sans text-secondary dark:text-gray-400 mt-1">
+            Generated across sessions
+          </p>
         </div>
 
-        {/* Document Breakdown (1 col) */}
-        <div className="bg-white dark:bg-surface border-2 border-primary shadow-brutal p-6 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-4 border-b border-primary/20 mb-6">
-              <h3 className="font-heading text-xl text-primary dark:text-white">
-                DOCUMENT STATUS SPLIT
-              </h3>
-              <ShieldAlert className="w-5 h-5 text-accent" />
-            </div>
-
-            <div className="space-y-4">
-              {data.document_breakdown && data.document_breakdown.length > 0 ? (
-                data.document_breakdown.map((item, idx) => {
-                  const maxCount = Math.max(...data.document_breakdown.map((d) => d.count), 1);
-                  return (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex justify-between text-xs font-sans font-bold">
-                        <span className="text-primary dark:text-gray-200">{item.name}</span>
-                        <span className="font-mono text-secondary dark:text-gray-400">{item.count}</span>
-                      </div>
-                      <div className="w-full bg-surface dark:bg-gray-800 h-2 border border-primary/20">
-                        <div
-                          className="h-full transition-all duration-300"
-                          style={{
-                            backgroundColor: item.color,
-                            width: `${item.count > 0 ? Math.min(100, Math.max(8, (item.count / maxCount) * 100)) : 0}%`,
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="py-6 text-center text-xs font-mono text-secondary">
-                  No document records logged for this scope yet.
-                </div>
-              )}
-            </div>
+        <div className="p-5 bg-white dark:bg-[#171E19] border-2 border-primary dark:border-[#2D3931] shadow-brutal-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-mono font-bold uppercase text-secondary dark:text-gray-400">
+              UNPAID CHALLANS
+            </span>
+            <AlertTriangle className="w-5 h-5 text-danger" />
           </div>
-
-          <div className="pt-6 border-t border-primary/20 mt-6">
-            <Link to="/reports">
-              <Button variant="outline" size="sm" className="w-full">
-                VIEW DETAILED ANALYTICS <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </Link>
+          <div className="font-heading text-3xl font-black text-danger">
+            {unpaidChallans}
           </div>
+          <p className="text-[11px] font-sans text-secondary dark:text-gray-400 mt-1">
+            Pending citizen clearance
+          </p>
+        </div>
+
+        <div className="p-5 bg-white dark:bg-[#171E19] border-2 border-primary dark:border-[#2D3931] shadow-brutal-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-mono font-bold uppercase text-secondary dark:text-gray-400">
+              PAID & SETTLED
+            </span>
+            <CheckCircle2 className="w-5 h-5 text-success" />
+          </div>
+          <div className="font-heading text-3xl font-black text-primary dark:text-white">
+            {paidChallans}
+          </div>
+          <p className="text-[11px] font-sans text-secondary dark:text-gray-400 mt-1">
+            Reconciled successfully
+          </p>
+        </div>
+
+        <div className="p-5 bg-white dark:bg-[#171E19] border-2 border-primary dark:border-[#2D3931] shadow-brutal-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-mono font-bold uppercase text-secondary dark:text-gray-400">
+              TOTAL PENALTIES
+            </span>
+            <Car className="w-5 h-5 text-accent" />
+          </div>
+          <div className="font-heading text-3xl font-black text-primary dark:text-white">
+            ₹{totalFines.toLocaleString('en-IN')}
+          </div>
+          <p className="text-[11px] font-sans text-secondary dark:text-gray-400 mt-1">
+            Statutory fine volume
+          </p>
         </div>
       </div>
 
-      {/* Bottom Row: Recent Challans & Officer Activity Log */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Challans */}
-        <div className="bg-white dark:bg-surface border-2 border-primary shadow-brutal p-6">
-          <div className="flex items-center justify-between pb-4 border-b border-primary/20 mb-4">
-            <h3 className="font-heading text-xl text-primary dark:text-white">
-              RECENT DIGITAL CHALLANS
-            </h3>
-            <Link to="/challans" className="text-xs font-bold text-secondary dark:text-accent hover:underline">
-              VIEW ALL ({challans.length})
-            </Link>
-          </div>
+      {/* Filter and Search Bar */}
+      <div className="bg-white dark:bg-[#171E19] border-2 border-primary dark:border-[#2D3931] shadow-brutal p-6 flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="w-full md:w-80">
+          <Input
+            placeholder="Search plate, challan ID, offense..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            icon={Search}
+          />
+        </div>
 
-          <div className="divide-y divide-gray-100 dark:divide-gray-800">
-            {challans.slice(0, 4).map((c) => (
-              <div key={c.id} className="py-3 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-black text-sm text-primary dark:text-white">
-                      {c.registration_number}
-                    </span>
+        <div className="flex gap-2 overflow-x-auto w-full md:w-auto">
+          {['ALL', 'UNPAID', 'PAID', 'DISPUTED'].map((st) => (
+            <button
+              key={st}
+              onClick={() => setStatusFilter(st)}
+              className={`px-4 py-2 font-heading text-xs tracking-wider border-2 border-primary dark:border-[#2D3931] transition-all ${
+                statusFilter === st
+                  ? 'bg-accent text-[#171E19] dark:text-[#171E19] font-black shadow-brutal-sm'
+                  : 'bg-white dark:bg-[#121814] text-secondary dark:text-sage hover:bg-surface dark:hover:bg-[#1F2822]'
+              }`}
+            >
+              {st}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Challans Table */}
+      <div className="bg-white dark:bg-[#171E19] border-2 border-primary dark:border-[#2D3931] shadow-brutal overflow-x-auto">
+        <table className="w-full text-left text-xs font-sans">
+          <thead>
+            <tr className="bg-primary dark:bg-[#101512] text-white border-b-2 border-primary dark:border-[#2D3931] font-heading tracking-wider">
+              <th className="p-3">CHALLAN ID</th>
+              <th className="p-3">REGISTRATION</th>
+              <th className="p-3">VIOLATION / OFFENSE</th>
+              <th className="p-3">FINE (INR)</th>
+              <th className="p-3">ISSUED AT</th>
+              <th className="p-3">STATUS</th>
+              <th className="p-3">DISPATCH</th>
+              <th className="p-3 text-right">ACTION</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+            {filteredChallans.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="p-8 text-center text-secondary dark:text-gray-400 font-mono text-sm">
+                  {loading ? 'LOADING GENERATED CHALLANS...' : 'NO CHALLANS MATCH THE CURRENT FILTER.'}
+                </td>
+              </tr>
+            ) : (
+              filteredChallans.map((c) => (
+                <tr key={c.id} className="hover:bg-surface/80 dark:hover:bg-[#1F2822]">
+                  <td className="p-3 font-mono font-bold text-primary dark:text-accent">
+                    {c.id}
+                  </td>
+                  <td className="p-3 font-mono font-black text-primary dark:text-white">
+                    {c.registration_number}
+                  </td>
+                  <td className="p-3">
+                    <div className="font-bold text-primary dark:text-white">{c.violation_title}</div>
+                    <div className="text-[11px] font-mono text-gray-500 dark:text-gray-400">{c.rule_section || 'MV Act 1988'}</div>
+                  </td>
+                  <td className="p-3 font-heading font-black text-sm text-danger">
+                    ₹{c.fine_amount}
+                  </td>
+                  <td className="p-3 font-mono text-gray-500 dark:text-gray-400">{c.issued_at}</td>
+                  <td className="p-3">
                     <Badge variant={c.payment_status} size="sm">
                       {c.payment_status}
                     </Badge>
-                  </div>
-                  <p className="text-xs text-secondary dark:text-gray-400 font-sans mt-0.5">
-                    {c.violation_title}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <div className="font-heading text-lg text-primary dark:text-accent font-bold">
-                    ₹{c.fine_amount}
-                  </div>
-                  <div className="text-[10px] font-mono text-gray-500">
-                    {c.id.split('-').slice(0, 3).join('-')}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Audit Log / Officer Activity */}
-        <div className="bg-white dark:bg-surface border-2 border-primary shadow-brutal p-6">
-          <div className="flex items-center justify-between pb-4 border-b border-primary/20 mb-4">
-            <h3 className="font-heading text-xl text-primary dark:text-white">
-              CHECKPOINT AUDIT TRAIL
-            </h3>
-            <span className="text-[10px] font-mono bg-surface border border-primary px-2 py-0.5 font-bold">
-              TAMPER-PROOF LOG
-            </span>
-          </div>
-
-          <div className="divide-y divide-gray-100 dark:divide-gray-800 font-sans text-xs">
-            {data.recent_activity_log && data.recent_activity_log.length > 0 ? (
-              data.recent_activity_log.map((log) => (
-                <div key={log.id} className="py-3 flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono font-bold text-accent bg-primary px-1.5 py-0.5 text-[10px]">
-                        {log.officer || log.officer_badge}
-                      </span>
-                      <span className="font-bold text-primary dark:text-white">{log.action}</span>
-                    </div>
-                    <p className="text-secondary dark:text-gray-300">
-                      Plate: <strong className="font-mono">{log.plate}</strong> — {log.result || log.details || 'Verification logged'}
-                    </p>
-                  </div>
-                  <span className="text-[10px] font-mono text-gray-500 flex-shrink-0">
-                    {log.timestamp}
-                  </span>
-                </div>
+                  </td>
+                  <td className="p-3">
+                    <span className="font-mono text-[11px] uppercase bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 border border-gray-300 dark:border-gray-700">
+                      {c.dispatch_status}
+                    </span>
+                  </td>
+                  <td className="p-3 text-right">
+                    <Button
+                      onClick={() => {
+                        setSelectedChallan(c);
+                        setShowSmsPreview(false);
+                        setDemoPhone(c.owner_phone || '');
+                      }}
+                      variant="outline"
+                      size="xs"
+                      icon={Eye}
+                    >
+                      RECEIPT
+                    </Button>
+                  </td>
+                </tr>
               ))
-            ) : (
-              <div className="py-8 text-center text-xs font-mono text-secondary dark:text-gray-400">
-                No checkpoint audit events recorded under your badge for this shift yet.
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Official Receipt & SMS Modal */}
+      {selectedChallan && (
+        <Modal
+          isOpen={!!selectedChallan}
+          onClose={() => {
+            setSelectedChallan(null);
+            setShowSmsPreview(false);
+          }}
+          title={`CHALLAN RECEIPT — ${selectedChallan.id}`}
+        >
+          <div className="space-y-6 print:m-0 font-sans">
+            {/* Dispatch Banner Message */}
+            {dispatchMessage && (
+              <div className="p-3 bg-accent border-2 border-primary text-xs font-mono font-bold text-primary flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{dispatchMessage}</span>
               </div>
             )}
+
+            {/* Printable Receipt Canvas */}
+            <div className="p-6 border-2 border-primary bg-white text-primary shadow-brutal-sm">
+              {/* Receipt Header */}
+              <div className="flex items-center justify-between pb-4 border-b-2 border-primary mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-primary text-accent flex items-center justify-center font-bold">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-heading text-lg tracking-wider">ROADGUARD SMART E-CHALLAN</h4>
+                    <p className="text-[10px] font-mono text-secondary">AUTOMATED TRAFFIC MONITORING & COMPLIANCE</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-mono text-xs font-bold text-primary">OFFICIAL E-RECEIPT</div>
+                  <div className="text-[10px] font-mono text-gray-500">{selectedChallan.id}</div>
+                </div>
+              </div>
+
+              {/* Receipt Details Grid */}
+              <div className="grid grid-cols-2 gap-4 text-xs font-sans pb-4 border-b border-gray-200">
+                <div>
+                  <span className="text-gray-500 block text-[10px] font-bold">VEHICLE NUMBER</span>
+                  <strong className="font-mono text-base font-black">{selectedChallan.registration_number}</strong>
+                </div>
+                <div>
+                  <span className="text-gray-500 block text-[10px] font-bold">REGISTERED OWNER</span>
+                  <strong>{selectedChallan.owner_name || 'Vehicle Owner on Record'}</strong>
+                </div>
+                <div>
+                  <span className="text-gray-500 block text-[10px] font-bold">DATE & TIME</span>
+                  <span className="font-mono">{selectedChallan.issued_at}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block text-[10px] font-bold">LOCATION</span>
+                  <span>{selectedChallan.location || 'Automated Traffic Checkpoint'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block text-[10px] font-bold">ISSUED VIA</span>
+                  <span>Smart ANPR Verification</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block text-[10px] font-bold">PAYMENT DUE DATE</span>
+                  <span className="font-mono text-danger font-bold">{selectedChallan.due_date || 'Within 30 days'}</span>
+                </div>
+              </div>
+
+              {/* Violation & Penalty Box */}
+              <div className="my-4 p-4 bg-surface border border-primary flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold uppercase block">{selectedChallan.violation_title}</span>
+                  <span className="text-[11px] font-mono text-secondary">{selectedChallan.rule_section || 'MV Act 1988'}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-gray-500 block font-mono">STATUTORY PENALTY</span>
+                  <span className="font-heading text-2xl font-black text-danger">₹{selectedChallan.fine_amount}</span>
+                </div>
+              </div>
+
+              {/* Payment QR Code Box */}
+              <div className="p-4 border border-dashed border-primary flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 bg-primary p-1 border border-primary flex items-center justify-center">
+                    <QrCode className="w-14 h-14 text-white" />
+                  </div>
+                  <div className="text-xs">
+                    <span className="font-bold block">SCAN TO PAY ONLINE</span>
+                    <span className="text-[10px] font-mono text-gray-500">
+                      upi://pay?pa=echallan.gov@sbi&am={selectedChallan.fine_amount}&tn={selectedChallan.id}
+                    </span>
+                  </div>
+                </div>
+                <Badge variant={selectedChallan.payment_status} size="sm">
+                  {selectedChallan.payment_status}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Interactive Live SMS Simulator Drawer */}
+            {showSmsPreview && (
+              <div className="border-2 border-primary bg-amber-50 dark:bg-surface p-5 space-y-4 shadow-brutal-sm">
+                <div className="flex items-center justify-between border-b border-primary/20 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-5 h-5 text-accent" />
+                    <h5 className="font-heading text-sm text-primary dark:text-white uppercase font-black">
+                      CARRIER SMS GATEWAY SIMULATION (MORTH / VAHAN)
+                    </h5>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold bg-primary text-accent px-2 py-0.5 border border-primary">
+                    OFFICIAL TEMPLATE
+                  </span>
+                </div>
+
+                <div className="bg-white dark:bg-surface-dark border border-primary p-4 rounded font-mono text-xs space-y-2">
+                  <div className="flex justify-between text-[11px] text-gray-500 border-b border-dashed border-gray-200 dark:border-gray-700 pb-1.5">
+                    <span>SENDER: <strong>AD-VAHAN / ROADGUARD</strong></span>
+                    <span>TO: <strong>{selectedChallan.owner_phone || '+91 98110 54321'}</strong></span>
+                  </div>
+                  <pre className="font-mono text-xs whitespace-pre-wrap leading-relaxed text-primary dark:text-gray-200">
+                    {getSmsMessageText(selectedChallan)}
+                  </pre>
+                  <div className="text-[10px] text-gray-400 italic pt-1 border-t border-gray-100 dark:border-gray-800">
+                    * Phone number auto-resolved from vehicle registry for plate {selectedChallan.registration_number}.
+                  </div>
+                </div>
+
+                {/* Live Demo Trigger */}
+                <div className="pt-2 border-t border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="w-full sm:w-auto flex-1 flex items-center gap-2">
+                    <span className="text-xs font-bold text-primary dark:text-white whitespace-nowrap">
+                      TEST ON PHONE:
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="e.g. 9811054321"
+                      value={demoPhone}
+                      onChange={(e) => setDemoPhone(e.target.value)}
+                      className="px-2.5 py-1.5 border border-primary text-xs font-mono w-full max-w-[180px] bg-white dark:bg-surface"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-end">
+                    <button
+                      type="button"
+                      onClick={handleCopySms}
+                      className="px-3 py-1.5 text-xs font-mono font-bold border border-primary bg-white dark:bg-surface hover:bg-surface transition-colors flex items-center gap-1 shadow-brutal-sm cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      {copySuccess ? 'COPIED!' : 'COPY TEXT'}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isDispatchingSms}
+                      onClick={() => handleDispatch('sms')}
+                      className="px-3.5 py-1.5 text-xs font-mono font-bold border border-primary bg-primary text-accent hover:bg-black transition-colors flex items-center gap-1.5 shadow-brutal-sm disabled:opacity-50 cursor-pointer"
+                      title="Dispatch real carrier SMS via Fast2SMS gateway"
+                    >
+                      {isDispatchingSms ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>SENDING CARRIER SMS...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5" />
+                          <span>DISPATCH CARRIER SMS</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleDirectSms}
+                      className="px-3 py-1.5 text-xs font-mono font-bold border border-primary bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-1 shadow-brutal-sm cursor-pointer"
+                      title="Open native SMS Messaging app on your phone / PC with pre-filled notice"
+                    >
+                      <Smartphone className="w-3.5 h-3.5" />
+                      PHONE SMS APP
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleSendWhatsApp}
+                      className="px-3 py-1.5 text-xs font-mono font-black border border-primary bg-green-500 text-white hover:bg-green-600 transition-colors flex items-center gap-1 shadow-brutal-sm cursor-pointer"
+                      title="Open WhatsApp notice pre-filled to this number"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      WHATSAPP
+                    </button>
+                  </div>
+                </div>
+
+                {/* Instant Inline Carrier Gateway Response Feedback */}
+                {smsResult && (
+                  <div
+                    className={`p-3.5 border-2 text-xs font-mono flex items-start gap-2.5 transition-all shadow-brutal-sm ${
+                      smsResult.success
+                        ? 'bg-amber-100 dark:bg-amber-950/60 border-primary text-primary dark:text-amber-200'
+                        : 'bg-red-50 dark:bg-red-950/60 border-danger text-danger dark:text-red-300'
+                    }`}
+                  >
+                    {smsResult.success ? (
+                      <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary dark:text-accent" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-danger" />
+                    )}
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-heading font-black uppercase tracking-wider text-[11px]">
+                          GATEWAY TELEMETRY FEEDBACK
+                        </span>
+                        <span className="text-[10px] opacity-75 font-mono">
+                          {new Date().toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <p className="font-sans text-xs font-medium leading-relaxed">
+                        {smsResult.message}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <div className="flex flex-wrap gap-2">
+                {selectedChallan.payment_status === 'unpaid' && (
+                  <Button
+                    onClick={async () => {
+                      await challanService.updatePaymentStatus(selectedChallan.id, 'paid');
+                      setSelectedChallan((prev) => ({ ...prev, payment_status: 'paid' }));
+                      const updated = await challanService.getChallans();
+                      setChallans(updated);
+                    }}
+                    variant="accent"
+                    size="sm"
+                    icon={CheckCircle2}
+                  >
+                    MARK AS PAID
+                  </Button>
+                )}
+                <Button onClick={() => handleDispatch('email')} variant="outline" size="sm" icon={Mail}>
+                  EMAIL DISPATCH
+                </Button>
+                <Button onClick={() => handleDispatch('sms')} variant="outline" size="sm" icon={MessageSquare}>
+                  {showSmsPreview ? 'SMS DISPATCHED' : 'SMS DISPATCH'}
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handlePrint} variant="primary" size="sm" icon={Printer}>
+                  PRINT RECEIPT
+                </Button>
+                <Button onClick={() => challanService.downloadReceipt(selectedChallan.id)} variant="accent" size="sm" icon={Download}>
+                  DOWNLOAD PDF
+                </Button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </Modal>
+      )}
     </div>
   );
 }
-

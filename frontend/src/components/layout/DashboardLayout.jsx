@@ -72,12 +72,6 @@ export default function DashboardLayout() {
                 <Moon className="w-4 h-4 text-primary transition-transform duration-200 group-hover:-rotate-12" />
               )}
             </button>
-
-            {/* Officer Badge Pill */}
-            <div className="hidden md:flex items-center gap-2 border border-primary px-3 py-1.5 bg-accent text-primary font-bold text-xs shadow-brutal-sm">
-              <ShieldCheck className="w-4 h-4" />
-              <span>{officer?.badge_number || 'KA-POL-1001'}</span>
-            </div>
           </div>
         </header>
 

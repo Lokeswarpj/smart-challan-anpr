@@ -42,7 +42,7 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-4">
           <Link to="/login">
             <Button variant="accent" size="md">
-              Officer Login <ArrowRight className="w-4 h-4 ml-1" />
+              Portal Login <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </Link>
         </div>
@@ -82,7 +82,7 @@ export default function Navbar() {
           </a>
           <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
             <Button variant="accent" size="md" className="w-full">
-              Officer Login <ArrowRight className="w-4 h-4 ml-1" />
+              Portal Login <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </Link>
         </div>

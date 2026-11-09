@@ -19,7 +19,7 @@ export default function Login() {
     setError('');
 
     if (!badgeNumber.trim()) {
-      setError('Please enter your Officer Badge ID.');
+      setError('Please enter your Username / Operator ID.');
       return;
     }
     if (!password) {
@@ -62,7 +62,7 @@ export default function Login() {
         <div className="my-16 lg:my-0 z-10 max-w-lg">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-secondary border border-gray-700 text-accent text-xs font-mono font-bold uppercase mb-6">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>OFFICIAL LAW ENFORCEMENT ACCESS</span>
+            <span>SMART ANPR & E-CHALLAN SYSTEM</span>
           </div>
 
           <h1 className="font-heading text-5xl sm:text-6xl lg:text-7xl tracking-tight leading-tight-display mb-6">
@@ -71,7 +71,7 @@ export default function Login() {
           </h1>
 
           <p className="font-sans text-sage text-base leading-relaxed">
-            Authorized portal for traffic police personnel. Rapid plate scanning, live RTO document cross-verification, and spot digital challan issuance.
+            Automated platform for license plate recognition, instant RTO document cross-verification, and spot digital challan generation.
           </p>
         </div>
 
@@ -89,10 +89,10 @@ export default function Login() {
       <div className="p-8 lg:p-16 flex flex-col justify-center max-w-md mx-auto w-full">
         <div className="mb-8">
           <h2 className="font-heading text-3xl sm:text-4xl text-primary tracking-wide mb-2">
-            OFFICER SIGN IN
+            OPERATOR SIGN IN
           </h2>
           <p className="font-sans text-secondary text-sm">
-            Enter your departmental badge identifier and access password.
+            Enter your login identifier and access password.
           </p>
         </div>
 
@@ -110,7 +110,7 @@ export default function Login() {
           <input type="password" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" />
 
           <Input
-            label="Officer Badge ID / Username"
+            label="Username / Operator ID"
             placeholder="e.g. KA-POL-2026"
             value={badgeNumber}
             onChange={(e) => setBadgeNumber(e.target.value)}
@@ -177,24 +177,24 @@ export default function Login() {
               onClick={() => autofillDemo('KA-POL-2026', 'traffic123')}
               className="p-2 border-2 border-primary bg-accent hover:bg-yellow-300 text-left transition-colors font-mono shadow-brutal-sm"
             >
-              <div className="font-bold text-primary">KA-POL-2026</div>
-              <div className="text-[10px] text-primary/80 font-semibold">Insp. Lokeshwar (Clean)</div>
+              <div className="font-bold text-primary">USER-2026</div>
+              <div className="text-[10px] text-primary/80 font-semibold">Demo Operator (Lokeshwar)</div>
             </button>
             <button
               type="button"
               onClick={() => autofillDemo('KA-POL-1001', 'officer123')}
               className="p-2 border border-primary bg-surface hover:bg-accent text-left transition-colors font-mono shadow-brutal-sm"
             >
-              <div className="font-bold text-primary">KA-POL-1001</div>
-              <div className="text-[10px] text-secondary">Officer (Ramesh)</div>
+              <div className="font-bold text-primary">OPERATOR-1</div>
+              <div className="text-[10px] text-secondary">Checkpoint Staff</div>
             </button>
             <button
               type="button"
               onClick={() => autofillDemo('KA-POL-ADMIN', 'admin123')}
               className="p-2 border border-primary bg-surface hover:bg-accent text-left transition-colors font-mono shadow-brutal-sm"
             >
-              <div className="font-bold text-primary">KA-POL-ADMIN</div>
-              <div className="text-[10px] text-secondary">Admin (Anand)</div>
+              <div className="font-bold text-primary">ADMIN-01</div>
+              <div className="text-[10px] text-secondary">System Admin</div>
             </button>
           </div>
         </div>

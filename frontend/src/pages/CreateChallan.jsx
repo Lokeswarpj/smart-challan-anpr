@@ -572,8 +572,8 @@ export default function CreateChallan() {
           />
 
           <Input
-            label="Issuing Officer Credential"
-            value={`${officer?.name || 'Inspector Lokeshwar P J'} (${officer?.badge_number || 'KA-POL-2026'})`}
+            label="Issued By (Operator Session)"
+            value={officer?.name || 'Authorized Operator'}
             disabled
             className="bg-gray-100 dark:bg-gray-800 font-mono font-bold"
           />
@@ -581,7 +581,7 @@ export default function CreateChallan() {
 
         <div className="space-y-1.5">
           <label className="text-xs font-bold uppercase tracking-wider text-primary dark:text-gray-200">
-            Field Officer Observations (Optional)
+            Incident Observations / Notes (Optional)
           </label>
           <textarea
             rows={3}

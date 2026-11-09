@@ -5,19 +5,16 @@ import {
   Search,
   Camera,
   FileText,
-  History,
-  BarChart3,
   Settings,
   Shield,
   LogOut,
-  UserCheck,
-  ShieldAlert
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
 
 export default function Sidebar({ isOpen, onClose }) {
-  const { officer, logout, isAdmin } = useAuth();
+  const { officer, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -26,13 +23,10 @@ export default function Sidebar({ isOpen, onClose }) {
   };
 
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Vehicle Verification', path: '/vehicle-verification', icon: Search },
+    { name: 'Challan History', path: '/dashboard', icon: LayoutDashboard },
     { name: 'ANPR Scanner', path: '/anpr-scanner', icon: Camera },
-    { name: 'E-Challans', path: '/challans', icon: FileText },
-    { name: 'Violation History', path: '/history', icon: History },
-    { name: 'Analytics & Reports', path: '/reports', icon: BarChart3 },
-    ...(isAdmin ? [{ name: 'Admin Console', path: '/admin', icon: ShieldAlert }] : []),
+    { name: 'Vehicle Verification', path: '/vehicle-verification', icon: Search },
+    { name: 'Issue New Challan', path: '/challans/new', icon: FileText },
     { name: 'Settings', path: '/settings', icon: Settings },
   ];
 
@@ -67,7 +61,7 @@ export default function Sidebar({ isOpen, onClose }) {
               </div>
             </div>
             <span className="text-[10px] font-mono uppercase bg-accent text-primary px-1.5 py-0.5 border border-primary font-bold">
-              PORTAL
+              SMART ANPR
             </span>
           </div>
 
@@ -97,18 +91,18 @@ export default function Sidebar({ isOpen, onClose }) {
           </nav>
         </div>
 
-        {/* Bottom Officer Profile & Logout */}
+        {/* Bottom User Profile & Logout */}
         <div className="p-4 border-t-2 border-primary dark:border-[#2D3931] bg-surface dark:bg-[#101512] space-y-3">
           <div className="flex items-center gap-3 px-2">
             <div className="w-10 h-10 bg-primary text-accent flex items-center justify-center font-heading text-lg border border-primary dark:border-[#2D3931]">
-              {officer?.name ? officer.name.charAt(0) : 'O'}
+              {officer?.name ? officer.name.charAt(0) : 'U'}
             </div>
             <div className="overflow-hidden">
               <p className="text-xs font-bold uppercase font-sans text-primary dark:text-white truncate">
-                {officer?.name || 'Officer On Duty'}
+                {officer?.name || 'Authorized User'}
               </p>
               <p className="text-[10px] font-mono text-secondary dark:text-gray-400 truncate">
-                BADGE: {officer?.badge_number || 'KA-POL-1001'}
+                STATUS: ACTIVE SESSION
               </p>
             </div>
           </div>
@@ -125,4 +119,3 @@ export default function Sidebar({ isOpen, onClose }) {
     </>
   );
 }
-

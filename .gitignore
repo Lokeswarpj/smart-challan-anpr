@@ -37,3 +37,8 @@ unique dataset/
 unique dataset
 *.zip
 
+# Major Project Archive (Never push to GitHub)
+major_project_archive/
+major_project_features/
+
+

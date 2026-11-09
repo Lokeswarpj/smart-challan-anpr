@@ -32,7 +32,7 @@ export default function Footer() {
               PLATFORM
             </h4>
             <ul className="space-y-2 text-sm text-sage font-sans">
-              <li><Link to="/login" className="hover:text-white transition-colors">Officer Portal</Link></li>
+              <li><Link to="/login" className="hover:text-white transition-colors">Operator Portal</Link></li>
               <li><a href="#features" className="hover:text-white transition-colors">Bento Features</a></li>
               <li><a href="#how-it-works" className="hover:text-white transition-colors">Computer Vision Pipeline</a></li>
               <li><a href="#technology" className="hover:text-white transition-colors">Architecture Stack</a></li>
