@@ -49,10 +49,10 @@ DIGIT_TO_LETTER = {
 
 # Optical Confusion Sets for Indian License Plate series and district glyphs
 OPTICAL_SERIES_CONFUSIONS = {
-    'M': {'N', 'W', 'RN', 'NN'},
+    'M': {'N', 'W', 'RN', 'NN', 'D', '0', 'O'},
     'N': {'M', 'H', 'II', 'U'},
     'Q': {'D', '0', 'O', 'G'},
-    'D': {'Q', '0', 'O', 'B'},
+    'D': {'Q', '0', 'O', 'B', 'M'},
     '0': {'D', 'Q', 'O'},
     'O': {'D', 'Q', '0'},
     'B': {'8', 'P', 'R'},
@@ -295,6 +295,11 @@ def correct_positional_errors(text: str) -> str:
                 chars[0] = match[0]
                 chars[1] = match[1]
 
+    # Special state resolution: Ladakh (LA) only has districts 01 and 02.
+    # If state is LA but district is >= 03 (e.g. LA20), this is an optical misread for KA (Karnataka).
+    if chars[0] == 'L' and chars[1] == 'A' and chars[2] != '0':
+        chars[0] = 'K'
+
     # 2. District Code (Index 2, 3 or Index 2): Must be digits
     # Handle single digit district vs 2-digit district
     if len(chars) >= 9 and chars[3].isalpha() and chars[4].isalpha() and "".join(chars[-4:]).isdigit():
@@ -468,12 +473,17 @@ def fuzzy_match_against_database(candidate: str, known_plates: List[str], max_di
     result = process.extractOne(candidate, known_plates, scorer=fuzz.ratio)
     if result:
         match, score, _ = result
-        if score >= 88:
-            # Check trailing digits safety
-            cand_digits = candidate[-4:] if len(candidate) >= 4 and candidate[-4:].isdigit() else None
-            match_digits = match[-4:] if len(match) >= 4 and match[-4:].isdigit() else None
-            if cand_digits and match_digits and cand_digits != match_digits:
-                # Different vehicle digits! Do NOT hijack different vehicle
+        if score >= 82:
+            # Strict trailing digits safety: extract whatever trailing digits exist in candidate
+            cand_nums = re.findall(r'\d+', candidate)
+            cand_digits = cand_nums[-1] if cand_nums else ''
+            match_digits = match[-4:] if len(match) >= 4 and match[-4:].isdigit() else ''
+
+            if len(cand_digits) >= 3 and match_digits:
+                # If candidate has 3 or 4 digits (e.g. 555 or 5550), it must NOT match a conflicting plate (e.g. 5501)
+                if not (match_digits == cand_digits or match_digits.startswith(cand_digits) or match_digits.endswith(cand_digits)):
+                    return None
+            elif cand_digits and match_digits and len(cand_digits) == 4 and cand_digits != match_digits:
                 return None
             return match
             

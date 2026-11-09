@@ -188,8 +188,8 @@ class ANPRService:
                                 best_text = cand_text
                                 best_conf = avg_conf
 
-                            # EARLY EXIT: If this pass yields a valid Indian plate format (8 to 11 chars), stop immediately!
-                            if is_valid and mod >= 0.90 and (8 <= len(corrected) <= 11) and cmvr_bonus > 0:
+                            # EARLY EXIT: Only exit early if this pass yields an exact database/CMVR verified plate with high OCR confidence
+                            if is_valid and mod == 1.0 and avg_conf >= 0.75 and cmvr_bonus > 0 and len(corrected) == 10:
                                 return best_text, best_conf
             except Exception as e:
                 print(f"[ANPRService] OCR pass warning: {e}")
