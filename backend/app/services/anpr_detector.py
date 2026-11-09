@@ -68,14 +68,19 @@ class PlateDetector:
                     # Realistic Indian plate aspect ratios (standard rectangular 500x120mm ~4.16, two-line 340x200mm ~1.7).
                     # Reject wide horizontal grille slats / radiator slots / bumper trim (aspect > 4.4).
                     if 1.2 <= box_aspect <= 4.4:
-                        pad_x = max(4, int(bw * 0.08))
-                        pad_y = max(3, int(bh * 0.10))
-                        crop_x1 = max(0, x1 - pad_x)
-                        crop_y1 = max(0, y1 - pad_y)
-                        crop_x2 = min(w, x2 + pad_x)
-                        crop_y2 = min(h, y2 + pad_y)
+                        refined_box = self._refine_plate_box(image, (x1, y1, x2, y2))
+                        rx1, ry1, rx2, ry2 = refined_box
+                        rbw = rx2 - rx1
+                        rbh = ry2 - ry1
+
+                        pad_x = max(4, int(rbw * 0.08))
+                        pad_y = max(3, int(rbh * 0.10))
+                        crop_x1 = max(0, rx1 - pad_x)
+                        crop_y1 = max(0, ry1 - pad_y)
+                        crop_x2 = min(w, rx2 + pad_x)
+                        crop_y2 = min(h, ry2 + pad_y)
                         best_crop = image[crop_y1:crop_y2, crop_x1:crop_x2]
-                        candidates.append((best_crop, (crop_x1, crop_y1, crop_x2, crop_y2), conf))
+                        candidates.append((best_crop, refined_box, conf))
 
                 elif cls_name in ["car", "motorcycle", "bus", "truck"]:
                     veh_h = y2 - y1
@@ -89,6 +94,62 @@ class PlateDetector:
 
         candidates.sort(key=lambda x: x[2], reverse=True)
         return candidates
+
+    def _refine_plate_box(self, image: np.ndarray, bbox: Tuple[int, int, int, int]) -> Tuple[int, int, int, int]:
+        """
+        Refines a candidate bounding box to tightly fit the high-contrast license plate
+        character region using Sobel-X edge density and contour analysis.
+        Corrects vertical anchor drift into dark radiator recesses, grilles, or bumpers.
+        """
+        try:
+            h, w = image.shape[:2]
+            x1, y1, x2, y2 = bbox
+            bw, bh = x2 - x1, y2 - y1
+            if bw <= 0 or bh <= 0:
+                return bbox
+            
+            sy1 = max(0, y1 - int(bh * 0.06))
+            sy2 = min(h, y2 + int(bh * 0.28))
+            sx1 = max(0, x1 - int(bw * 0.05))
+            sx2 = min(w, x2 + int(bw * 0.05))
+            
+            roi = image[sy1:sy2, sx1:sx2]
+            if roi.size == 0:
+                return bbox
+                
+            gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY) if len(roi.shape) == 3 else roi
+            
+            sobelx = cv2.Sobel(gray_roi, cv2.CV_16S, 1, 0, ksize=3)
+            abs_sobel = cv2.convertScaleAbs(sobelx)
+            
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 3))
+            closed = cv2.morphologyEx(abs_sobel, cv2.MORPH_CLOSE, kernel)
+            _, thresh = cv2.threshold(closed, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            
+            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            best_contour_box = None
+            best_area = 0
+            
+            for c in contours:
+                cx, cy, cw, ch = cv2.boundingRect(c)
+                aspect = cw / float(ch) if ch > 0 else 0
+                area = cw * ch
+                if 1.6 <= aspect <= 5.2 and area > best_area and cw >= (bw * 0.55):
+                    best_area = area
+                    best_contour_box = (cx, cy, cw, ch)
+                    
+            if best_contour_box:
+                cx, cy, cw, ch = best_contour_box
+                margin_x = max(2, int(cw * 0.04))
+                margin_y = max(2, int(ch * 0.08))
+                rx1 = max(0, sx1 + cx - margin_x)
+                ry1 = max(0, sy1 + cy - margin_y)
+                rx2 = min(w, sx1 + cx + cw + margin_x)
+                ry2 = min(h, sy1 + cy + ch + margin_y)
+                return (rx1, ry1, rx2, ry2)
+        except Exception:
+            pass
+        return bbox
 
     def detect_plate(self, image: np.ndarray) -> Tuple[Optional[np.ndarray], Tuple[int, int, int, int], float]:
         """

@@ -163,7 +163,7 @@ export default function ANPRScanner() {
             </div>
 
             {/* Video Viewport Frame */}
-            <div className="relative aspect-video bg-black border-2 border-primary overflow-hidden flex items-center justify-center p-1">
+            <div className={`relative ${cameraActive ? 'aspect-video' : 'min-h-[280px] max-h-[480px]'} bg-black border-2 border-primary overflow-hidden flex items-center justify-center p-1.5 sm:p-2`}>
               {cameraActive ? (
                 <div className="relative w-full h-full">
                   <video
@@ -184,11 +184,11 @@ export default function ANPRScanner() {
                   </div>
                 </div>
               ) : uploadedPreview ? (
-                <div className="relative inline-block max-h-full max-w-full">
+                <div className="relative inline-flex items-center justify-center max-h-full max-w-full">
                   <img
                     src={uploadedPreview}
                     alt="Captured vehicle plate"
-                    className="max-h-[440px] max-w-full w-auto h-auto block mx-auto border border-primary/20"
+                    className="max-h-[420px] max-w-full w-auto h-auto block object-contain border border-primary/20 select-none"
                   />
 
                   {/* Scanning Laser Beam & Dynamic Stage Status */}
@@ -218,7 +218,7 @@ export default function ANPRScanner() {
                       {/* Floating Badge Pin */}
                       <span className="absolute -top-6 left-0 bg-accent text-primary text-[10px] font-mono font-black px-1.5 py-0.5 tracking-wider uppercase whitespace-nowrap shadow-brutal-sm flex items-center gap-1 border border-primary">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                        {result.registration_number || "PLATE"} • {(result.confidence * 100).toFixed(1)}%
+                        {editablePlate || result.registration_number || "PLATE"} • {(result.confidence * 100).toFixed(1)}%
                       </span>
                     </div>
                   )}
