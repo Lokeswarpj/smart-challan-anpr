@@ -2,7 +2,7 @@ export const MOCK_VEHICLES = [
   {
     registration_number: "HR71H0003",
     owner_name: "Vikramaditya Singhania",
-    owner_phone: "+91 8524994488",
+    owner_phone: "+91 98110 54321",
     owner_email: "vikram.singhania@mercedes-owner.in",
     vehicle_class: "Motor Car (LMV)",
     maker_model: "Mercedes-Benz GLE 450 4MATIC",
@@ -63,7 +63,7 @@ export const MOCK_VEHICLES = [
   {
     registration_number: "KA01AB1234",
     owner_name: "Rahul Sharma",
-    owner_phone: "+91 8524994488",
+    owner_phone: "+91 98450 12345",
     owner_email: "rahul.sharma@example.com",
     vehicle_class: "Motor Car (LMV)",
     maker_model: "Tata Nexon Creative 1.2 Petrol",
@@ -213,7 +213,7 @@ export const MOCK_VEHICLES = [
   {
     registration_number: "DL04CC9999",
     owner_name: "Vikram Malhotra",
-    owner_phone: "+91 8524994488",
+    owner_phone: "+91 98101 23456",
     owner_email: "vikram.m@example.com",
     vehicle_class: "Motor Car (LMV)",
     maker_model: "Mahindra XUV700 AX7",
@@ -273,7 +273,7 @@ export const MOCK_VEHICLES = [
   {
     registration_number: "KA05NB3321",
     owner_name: "Kiran Gowda",
-    owner_phone: "+91 8524994488",
+    owner_phone: "+91 98451 98765",
     owner_email: "kiran.gowda@example.com",
     vehicle_class: "Motorcycle (2-Wheeler)",
     maker_model: "Royal Enfield Classic 350",
@@ -483,7 +483,7 @@ export const MOCK_VEHICLES = [
   {
     registration_number: "KA53Z9000",
     owner_name: "Deepak Choudhury",
-    owner_phone: "+91 8524994488",
+    owner_phone: "+91 98452 34567",
     owner_email: "deepak.c@example.com",
     vehicle_class: "Motorcycle (2-Wheeler)",
     maker_model: "Ather 450X Gen 3",

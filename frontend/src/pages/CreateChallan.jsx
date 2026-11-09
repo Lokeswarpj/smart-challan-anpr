@@ -261,8 +261,8 @@ export default function CreateChallan() {
         fine_amount: totalFineAmount,
         location: locationName,
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        officer_name: officer?.name || 'Inspector Lokeshwar P J',
-        officer_badge: officer?.badge_number || 'KA-POL-2026',
+        officer_name: officer?.name || 'Authorized Operator',
+        officer_badge: officer?.badge_number || 'OP-01',
         notes: notes,
       });
 

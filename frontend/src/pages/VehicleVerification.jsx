@@ -151,14 +151,12 @@ export default function VehicleVerification() {
   };
 
   const demoPlates = [
-    { plate: "KA01AB1234", desc: "100% Compliant (Green)" },
-    { plate: "KA03MG4567", desc: "Expiring PUC (Amber)" },
-    { plate: "MH12DE7890", desc: "Expiring Insurance (Amber)" },
-    { plate: "DL04CC9999", desc: "Expired Insurance (Red)" },
-    { plate: "KA05NB3321", desc: "Expired PUC + Fine (Red)" },
-    { plate: "KA04EF1122", desc: "Road Tax Pending (Red)" },
-    { plate: "22BH9988AA", desc: "Bharat (BH) Series (Green)" },
-    { plate: "KA53Z9000", desc: "Chronic Violator (3 Fines)" },
+    { plate: "KL58AG3406", desc: "Maruti Brezza — Expired PUC (Violation)" },
+    { plate: "KA20MG5550", desc: "Toyota Fortuner — 100% Compliant (All Green)" },
+    { plate: "HR71H0003", desc: "Mercedes-Benz — Expiring Insurance (Amber)" },
+    { plate: "KA01AB1234", desc: "Honda City — 100% Compliant (Green)" },
+    { plate: "DL04CC9999", desc: "Hyundai Creta — Expired Insurance (Red)" },
+    { plate: "22BH9988AA", desc: "Bharat (BH) Series — Compliant" },
   ];
 
   return (

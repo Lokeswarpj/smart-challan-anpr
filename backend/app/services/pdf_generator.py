@@ -126,7 +126,7 @@ def generate_challan_pdf(challan_data: dict) -> bytes:
     issued_date = safe_xml(challan_data.get("issued_at", datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
     due_date = safe_xml(challan_data.get("due_date", "15 Days from Notice"))
     location = safe_xml(challan_data.get("location", "Central Junction"))
-    officer_badge = safe_xml(challan_data.get("officer_badge", "KA-POL-1001"))
+    officer_badge = safe_xml(challan_data.get("officer_badge", "OP-01"))
 
     info_data = [
         [
@@ -135,7 +135,7 @@ def generate_challan_pdf(challan_data: dict) -> bytes:
                 f"<b>Issued Date & Time:</b> {issued_date}<br/>"
                 f"<b>Payment Due Date:</b> {due_date}<br/>"
                 f"<b>Jurisdiction / Location:</b> {location}<br/>"
-                f"<b>Enforcing Officer ID:</b> {officer_badge}",
+                f"<b>Issued By Operator:</b> {officer_badge}",
                 body_style
             ),
             qr_flowable

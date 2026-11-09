@@ -38,7 +38,7 @@ export default function Dashboard() {
   const [selectedChallan, setSelectedChallan] = useState(null);
   const [dispatchMessage, setDispatchMessage] = useState('');
   const [showSmsPreview, setShowSmsPreview] = useState(false);
-  const [demoPhone, setDemoPhone] = useState('8524994488');
+  const [demoPhone, setDemoPhone] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
   const [isDispatchingSms, setIsDispatchingSms] = useState(false);
   const [smsResult, setSmsResult] = useState(null);
@@ -63,8 +63,8 @@ export default function Dashboard() {
     if (selectedChallan) {
       const p = selectedChallan.owner_phone
         ? selectedChallan.owner_phone.replace(/[^0-9]/g, '').slice(-10)
-        : '8524994488';
-      setDemoPhone(p || '8524994488');
+        : '';
+      setDemoPhone(p);
       setSmsResult(null);
     }
   }, [selectedChallan]);
@@ -99,7 +99,12 @@ export default function Dashboard() {
       setIsDispatchingSms(true);
       setSmsResult(null);
     }
-    const targetPhone = demoPhone || selectedChallan.owner_phone || '8524994488';
+    const targetPhone = (demoPhone || selectedChallan.owner_phone || '').replace(/[^0-9]/g, '').slice(-10);
+    if (!targetPhone) {
+      setDispatchMessage('Please enter a valid 10-digit phone number to dispatch.');
+      if (channel === 'sms') setIsDispatchingSms(false);
+      return;
+    }
     setDispatchMessage(`Dispatching via ${channel.toUpperCase()} to ${targetPhone}...`);
 
     try {
@@ -140,9 +145,13 @@ export default function Dashboard() {
 
   const handleSendWhatsApp = () => {
     if (!selectedChallan) return;
-    const cleanNumber = (demoPhone || selectedChallan.owner_phone || '8524994488')
+    const cleanNumber = (demoPhone || selectedChallan.owner_phone || '')
       .replace(/[^0-9]/g, '')
       .replace(/^0+/, '');
+    if (!cleanNumber) {
+      alert('Please enter a recipient phone number for WhatsApp notice.');
+      return;
+    }
     const finalNumber = cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
     const text = encodeURIComponent(getSmsMessageText(selectedChallan));
     const url = `https://wa.me/${finalNumber}?text=${text}`;
@@ -151,9 +160,13 @@ export default function Dashboard() {
 
   const handleDirectSms = () => {
     if (!selectedChallan) return;
-    const cleanNumber = (demoPhone || selectedChallan.owner_phone || '8524994488')
+    const cleanNumber = (demoPhone || selectedChallan.owner_phone || '')
       .replace(/[^0-9]/g, '')
       .slice(-10);
+    if (!cleanNumber) {
+      alert('Please enter a recipient phone number for SMS notice.');
+      return;
+    }
     const text = encodeURIComponent(getSmsMessageText(selectedChallan));
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const delimiter = isIOS ? '&' : '?';
@@ -457,7 +470,7 @@ export default function Dashboard() {
                 <div className="bg-white dark:bg-surface-dark border border-primary p-4 rounded font-mono text-xs space-y-2">
                   <div className="flex justify-between text-[11px] text-gray-500 border-b border-dashed border-gray-200 dark:border-gray-700 pb-1.5">
                     <span>SENDER: <strong>AD-VAHAN / ROADGUARD</strong></span>
-                    <span>TO: <strong>{selectedChallan.owner_phone || '+91 98110 54321'}</strong></span>
+                    <span>TO: <strong>{selectedChallan.owner_phone || demoPhone || 'Enter phone number below'}</strong></span>
                   </div>
                   <pre className="font-mono text-xs whitespace-pre-wrap leading-relaxed text-primary dark:text-gray-200">
                     {getSmsMessageText(selectedChallan)}
@@ -471,11 +484,11 @@ export default function Dashboard() {
                 <div className="pt-2 border-t border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div className="w-full sm:w-auto flex-1 flex items-center gap-2">
                     <span className="text-xs font-bold text-primary dark:text-white whitespace-nowrap">
-                      TEST ON PHONE:
+                      RECIPIENT PHONE:
                     </span>
                     <input
                       type="text"
-                      placeholder="e.g. 9811054321"
+                      placeholder="Enter 10-digit mobile"
                       value={demoPhone}
                       onChange={(e) => setDemoPhone(e.target.value)}
                       className="px-2.5 py-1.5 border border-primary text-xs font-mono w-full max-w-[180px] bg-white dark:bg-surface"

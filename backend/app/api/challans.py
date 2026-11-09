@@ -288,7 +288,7 @@ def download_challan_receipt(
         "issued_at": challan.issued_at.strftime("%Y-%m-%d %H:%M:%S") if challan.issued_at else "Now",
         "due_date": challan.due_date.isoformat() if challan.due_date else "15 Days",
         "location": challan.location,
-        "officer_badge": challan.officer.badge_number if challan.officer else "KA-POL-1001",
+        "officer_badge": challan.officer.badge_number if challan.officer else "OP-01",
         "violation_title": challan.violation_title,
         "rule_section": challan.rule_section,
         "fine_amount": challan.fine_amount,
