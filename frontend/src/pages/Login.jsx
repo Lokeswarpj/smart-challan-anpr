@@ -10,9 +10,37 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [selectedQuickFill, setSelectedQuickFill] = useState('KA-POL-2026');
   const [error, setError] = useState('');
   const { login, loading } = useAuth();
   const navigate = useNavigate();
+
+  const demoAccounts = [
+    {
+      id: 'KA-POL-2026',
+      badge: 'KA-POL-2026',
+      password: 'traffic123',
+      badgeTitle: 'KA-POL-2026',
+      name: 'Inspector Lokeshwar P J',
+      role: 'Lead Enforcement Officer'
+    },
+    {
+      id: 'KA-POL-1001',
+      badge: 'KA-POL-1001',
+      password: 'officer123',
+      badgeTitle: 'KA-POL-1001',
+      name: 'Sub-Inspector Ramesh Kumar',
+      role: 'Indiranagar Checkpoint Staff'
+    },
+    {
+      id: 'KA-POL-ADMIN',
+      badge: 'KA-POL-ADMIN',
+      password: 'admin123',
+      badgeTitle: 'KA-POL-ADMIN',
+      name: 'Assistant Commissioner Anand Patil',
+      role: 'Central HQ Admin'
+    }
+  ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,9 +63,10 @@ export default function Login() {
     }
   };
 
-  const autofillDemo = (badge, pass) => {
-    setBadgeNumber(badge);
-    setPassword(pass);
+  const autofillDemo = (account) => {
+    setBadgeNumber(account.badge);
+    setPassword(account.password);
+    setSelectedQuickFill(account.id);
     setError('');
   };
 
@@ -171,31 +200,32 @@ export default function Login() {
           <div className="text-[11px] font-mono text-secondary font-bold uppercase mb-3 text-center">
             DEMONSTRATION QUICK-FILLS:
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-sans">
-            <button
-              type="button"
-              onClick={() => autofillDemo('KA-POL-2026', 'traffic123')}
-              className="p-2 border-2 border-primary bg-accent hover:bg-yellow-300 text-left transition-colors font-mono shadow-brutal-sm"
-            >
-              <div className="font-bold text-primary">USER-2026</div>
-              <div className="text-[10px] text-primary/80 font-semibold">Demo Operator (Lokeshwar)</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => autofillDemo('KA-POL-1001', 'officer123')}
-              className="p-2 border border-primary bg-surface hover:bg-accent text-left transition-colors font-mono shadow-brutal-sm"
-            >
-              <div className="font-bold text-primary">OPERATOR-1</div>
-              <div className="text-[10px] text-secondary">Checkpoint Staff</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => autofillDemo('KA-POL-ADMIN', 'admin123')}
-              className="p-2 border border-primary bg-surface hover:bg-accent text-left transition-colors font-mono shadow-brutal-sm"
-            >
-              <div className="font-bold text-primary">ADMIN-01</div>
-              <div className="text-[10px] text-secondary">System Admin</div>
-            </button>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-sans">
+            {demoAccounts.map((acc) => {
+              const isSelected = selectedQuickFill === acc.id || badgeNumber === acc.badge;
+              return (
+                <button
+                  key={acc.id}
+                  type="button"
+                  onClick={() => autofillDemo(acc)}
+                  className={`p-2.5 text-left transition-all duration-150 font-mono rounded-none ${
+                    isSelected
+                      ? 'border-2 border-primary bg-accent shadow-brutal-sm scale-[1.02] ring-1 ring-primary'
+                      : 'border border-primary/40 bg-surface hover:bg-accent/40 opacity-85 hover:opacity-100 shadow-sm'
+                  }`}
+                >
+                  <div className="font-heading font-black text-[13px] text-primary tracking-wide">
+                    {acc.badgeTitle}
+                  </div>
+                  <div className="text-[11px] font-bold text-primary truncate mt-0.5">
+                    {acc.name}
+                  </div>
+                  <div className="text-[10px] text-primary/70 font-semibold truncate">
+                    {acc.role}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

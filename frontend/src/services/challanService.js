@@ -6,7 +6,7 @@ import { MOCK_VEHICLES } from '../mocks/vehicles';
 let activeChallans = [...MOCK_CHALLANS];
 
 export const challanService = {
-  async getChallans(limit = 10) {
+  async getChallans(limit = 100) {
     try {
       const response = await apiClient.get(`/challans?limit=${limit}`);
       return response.data;

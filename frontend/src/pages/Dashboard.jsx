@@ -29,12 +29,15 @@ import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Badge from '../components/common/Badge';
 import Modal from '../components/common/Modal';
+import { useAuth } from '../context/AuthContext';
 import { challanService } from '../services/challanService';
 
 export default function Dashboard() {
+  const { officer } = useAuth();
   const [challans, setChallans] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [scopeFilter, setScopeFilter] = useState('ALL'); // 'ALL' = Central Station, 'MY' = Logged-in Officer Citations
   const [selectedChallan, setSelectedChallan] = useState(null);
   const [dispatchMessage, setDispatchMessage] = useState('');
   const [showSmsPreview, setShowSmsPreview] = useState(false);
@@ -46,7 +49,7 @@ export default function Dashboard() {
 
   const fetchChallans = async () => {
     try {
-      const data = await challanService.getChallans();
+      const data = await challanService.getChallans(100);
       setChallans(data || []);
     } catch (err) {
       console.warn('Failed to fetch challans:', err);
@@ -69,13 +72,38 @@ export default function Dashboard() {
     }
   }, [selectedChallan]);
 
-  // Compute live summary metrics directly from challans state
-  const totalChallans = challans.length;
-  const unpaidChallans = challans.filter((c) => (c.payment_status || '').toLowerCase() === 'unpaid').length;
-  const paidChallans = challans.filter((c) => (c.payment_status || '').toLowerCase() === 'paid').length;
-  const totalFines = challans.reduce((sum, c) => sum + (Number(c.fine_amount) || 0), 0);
+  // Derive scoped citations based on department-wide Central Station vs personal Officer records
+  const scopedChallans = React.useMemo(() => {
+    if (scopeFilter === 'MY' && officer?.badge_number) {
+      return challans.filter(
+        (c) =>
+          c.officer_badge === officer.badge_number ||
+          (officer.id && String(c.officer_id) === String(officer.id))
+      );
+    }
+    return challans;
+  }, [challans, scopeFilter, officer]);
 
-  const filteredChallans = challans.filter((c) => {
+  // Compute live summary metrics dynamically from scoped citations
+  const totalChallans = scopedChallans.length;
+  const unpaidChallans = scopedChallans.filter(
+    (c) => (c.payment_status || '').toLowerCase() === 'unpaid'
+  ).length;
+  const paidChallans = scopedChallans.filter(
+    (c) => (c.payment_status || '').toLowerCase() === 'paid'
+  ).length;
+  const totalFines = scopedChallans.reduce(
+    (sum, c) => sum + (Number(c.fine_amount) || 0),
+    0
+  );
+
+  const myCitationsCount = challans.filter(
+    (c) =>
+      c.officer_badge === officer?.badge_number ||
+      (officer?.id && String(c.officer_id) === String(officer.id))
+  ).length;
+
+  const filteredChallans = scopedChallans.filter((c) => {
     const term = searchTerm.toLowerCase();
     const matchesSearch =
       (c.registration_number || '').toLowerCase().includes(term) ||
@@ -193,6 +221,45 @@ export default function Dashboard() {
           </div>
         }
       />
+
+      {/* Enforcement Scope Selector (Station-wide vs Officer Personal Citations) */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-white dark:bg-[#171E19] border-2 border-primary dark:border-[#2D3931] shadow-brutal-sm">
+        <div className="flex items-center gap-2">
+          <Shield className="w-4 h-4 text-accent" />
+          <span className="text-xs font-mono font-bold uppercase text-primary dark:text-white">
+            ENFORCEMENT CITATIONS SCOPE:
+          </span>
+          <span className="text-[11px] font-mono text-secondary dark:text-gray-400">
+            {scopeFilter === 'ALL'
+              ? 'Showing central traffic department records'
+              : `Showing records issued by ${officer?.name || officer?.badge_number || 'you'}`}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setScopeFilter('ALL')}
+            className={`flex-1 sm:flex-initial px-3.5 py-1.5 text-xs font-heading font-black uppercase tracking-wider border-2 border-primary transition-all ${
+              scopeFilter === 'ALL'
+                ? 'bg-primary text-accent shadow-brutal-sm scale-[1.02]'
+                : 'bg-surface hover:bg-black/5 text-primary opacity-80'
+            }`}
+          >
+            CENTRAL STATION ({challans.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setScopeFilter('MY')}
+            className={`flex-1 sm:flex-initial px-3.5 py-1.5 text-xs font-heading font-black uppercase tracking-wider border-2 border-primary transition-all ${
+              scopeFilter === 'MY'
+                ? 'bg-accent text-primary shadow-brutal-sm scale-[1.02]'
+                : 'bg-surface hover:bg-black/5 text-primary opacity-80'
+            }`}
+          >
+            MY CITATIONS ({myCitationsCount})
+          </button>
+        </div>
+      </div>
 
       {/* 4 Summary Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
