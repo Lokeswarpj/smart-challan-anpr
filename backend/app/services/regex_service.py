@@ -206,7 +206,7 @@ def is_valid_plate(plate: str) -> bool:
     """Checks whether the plate string conforms to standard Indian or BH series format."""
     if not plate:
         return False
-    if BHARAT_SERIES_REGEX.match(plate):
+    if BHARAT_SERIES_REGEX.match(plate) or re.match(r'^[0-9]{2}BH[0-9]{4}[A-Z]{0,2}$', plate):
         return True
     if STANDARD_PLATE_REGEX.match(plate):
         return plate[:2] in INDIAN_STATE_CODES
@@ -249,6 +249,8 @@ def correct_positional_errors(text: str) -> str:
             chars[i] = DIGIT_TO_LETTER.get(chars[i], chars[i])
         corrected = "".join(chars)
         if BHARAT_SERIES_REGEX.match(corrected):
+            return corrected
+        if re.match(r'^[0-9]{2}BH[0-9]{4}[A-Z]{0,2}$', corrected):
             return corrected
 
     # Standard Indian Plate

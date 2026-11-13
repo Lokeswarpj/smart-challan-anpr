@@ -283,7 +283,7 @@ class ANPRService:
             clahe = cv2.createCLAHE(clipLimit=2.2, tileGridSize=(8, 8))
             clahe_img = clahe.apply(gray_cand)
             h, w = cand_crop_resized.shape[:2]
-            ocr_images = [enhanced_gray, clahe_img, binarized]
+            ocr_images = [cand_crop_resized, enhanced_gray, clahe_img, binarized]
             if w > 80:
                 hsrp_trimmed = cand_crop_resized[:, int(w * 0.10):]
                 enhanced_trimmed, binarized_trimmed = preprocess_plate(hsrp_trimmed)

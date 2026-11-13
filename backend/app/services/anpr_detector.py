@@ -73,8 +73,8 @@ class PlateDetector:
                         rbw = rx2 - rx1
                         rbh = ry2 - ry1
 
-                        pad_x = max(4, int(rbw * 0.08))
-                        pad_y = max(3, int(rbh * 0.10))
+                        pad_x = max(8, int(rbw * 0.12))
+                        pad_y = max(4, int(rbh * 0.10))
                         crop_x1 = max(0, rx1 - pad_x)
                         crop_y1 = max(0, ry1 - pad_y)
                         crop_x2 = min(w, rx2 + pad_x)

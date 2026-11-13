@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.db.session import get_db
@@ -40,8 +41,8 @@ async def detect_license_plate(
     except Exception:
         known_plates = None
 
-    # Process image through our multi-stage pipeline
-    result = anpr_service.process_image(image_bgr, known_plates=known_plates)
+    # Process image through our multi-stage pipeline off the async event loop to prevent blocking
+    result = await run_in_threadpool(anpr_service.process_image, image_bgr, known_plates=known_plates)
 
     # Map pipeline processing stages
     raw_stages = result.get("pipeline_stages", [])
