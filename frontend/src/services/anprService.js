@@ -8,7 +8,7 @@ export const anprService = {
     try {
       const response = await apiClient.post('/anpr/detect', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': undefined, // Let browser / Axios auto-generate boundary
         },
       });
       return { ...response.data, is_mock: false };

@@ -8,7 +8,7 @@ from app.db.session import get_db
 from app.db.models import Vehicle, AuditLog, Officer
 from app.services.anpr_service import anpr_service
 from app.schemas.anpr import ANPRDetectResponse, ProcessingStage, BoundingBox
-from app.api.dependencies import get_current_officer
+from app.api.dependencies import get_current_officer, get_optional_officer
 from app.api.vehicles import build_vehicle_response
 
 router = APIRouter(prefix="/anpr", tags=["ANPR Computer Vision"])
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/anpr", tags=["ANPR Computer Vision"])
 async def detect_license_plate(
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
-    officer: Officer = Depends(get_current_officer)
+    officer: Officer = Depends(get_optional_officer)
 ):
     if not image.content_type.startswith("image/"):
         raise HTTPException(
